@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, type FormEvent, type ReactNode } from "react"
-import { ArrowLeft, ArrowRight, Check, ImageOff } from "lucide-react"
+import { useState, type ReactNode } from "react"
+import { ArrowLeft, Check, Eye, FileText, ImageOff, MousePointerClick, RotateCw } from "lucide-react"
 import type { Vehicle } from "@/lib/types"
 import { formatCurrency, formatMileage } from "@/lib/format"
+import { getDemandSignal, isHighDemand } from "@/lib/mock-data"
 import { COLOR, GRADIENT, SHELL } from "@/lib/tokens"
 import { VehicleDetailsTab } from "./vdp/VehicleDetailsTab"
 import { MerchandiseStatusTab } from "./vdp/MerchandiseStatusTab"
@@ -41,25 +42,16 @@ const DETAIL_ROWS = (v: Vehicle) => [
 
 export function VehicleActionDrawer({ vehicle, onClose, onResolve, onAdjustPrice }: VehicleActionDrawerProps) {
   const [tab, setTab] = useState<Tab>("Overview")
-  const [reply, setReply] = useState("")
-  const [replySent, setReplySent] = useState(false)
 
   if (!vehicle) return null
 
   const pendingChecklist = CHECKLIST.filter((row) => vehicle.needsAction[row.key])
   const merchandisedDone = pendingChecklist.length === 0
-  const openCount = (merchandisedDone ? 0 : 1) + 1 // "Shopper engaged" stage is always open in this demo narrative
+  const openCount = merchandisedDone ? 0 : 1
+  const demand = getDemandSignal(vehicle)
 
   const handleFixNow = () => {
     pendingChecklist.forEach((row) => onResolve(vehicle.id, row.key))
-  }
-
-  const handleSendReply = (e: FormEvent) => {
-    e.preventDefault()
-    if (!reply.trim()) return
-    setReplySent(true)
-    setReply("")
-    setTimeout(() => setReplySent(false), 2000)
   }
 
   return (
@@ -268,52 +260,21 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onAdjustPrice
                 )}
               </ProcessStep>
 
-              <ProcessStep title="Shopper engaged" subtitle="Vini answered, booked the test drive, and is holding the thread" status="pending">
-                <div style={{ marginTop: 14 }}>
-                  <div style={{ padding: "9px 12px", borderRadius: "4px 12px 12px", background: "rgb(247,247,250)", fontSize: 13.5, fontWeight: 500, color: "rgb(37,33,58)", lineHeight: 1.45 }}>
-                    Is the {vehicle.model} still available? I could come by this week.
-                  </div>
-                  <div style={{ marginTop: 5, fontSize: 12, fontWeight: 500, color: "rgba(40,35,70,0.42)" }}>Ravi Shah · 2h ago</div>
-                  <button
-                    type="button"
-                    style={{
-                      marginTop: 11,
-                      width: "100%",
-                      boxSizing: "border-box",
-                      height: 44,
-                      borderRadius: 12,
-                      border: `1px solid ${COLOR.chipActiveBorder}`,
-                      background: "none",
-                      color: COLOR.primary,
-                      cursor: "pointer",
-                      fontSize: 13.5,
-                      fontWeight: 700,
-                    }}
-                  >
-                    Let Vini reply
-                  </button>
-                  <form onSubmit={handleSendReply} style={{ marginTop: 8, display: "flex", alignItems: "center", height: 44, paddingRight: 4, boxSizing: "border-box", borderRadius: 12, border: `1px solid ${COLOR.borderSoft}`, background: "#fff" }}>
-                    <input
-                      value={reply}
-                      onChange={(e) => setReply(e.target.value)}
-                      placeholder={replySent ? "Reply sent ✓" : "Or reply yourself…"}
-                      aria-label="Reply to the shopper"
-                      style={{ flex: 1, minWidth: 0, height: "100%", padding: "0 12px", border: "none", outline: "none", background: "transparent", fontSize: 13, fontWeight: 500, color: COLOR.ink }}
-                    />
-                    <button
-                      type="submit"
-                      aria-label="Send reply"
-                      disabled={!reply.trim()}
-                      style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 10, border: "none", background: COLOR.chipActiveBg, cursor: reply.trim() ? "pointer" : "default", display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: reply.trim() ? 1 : 0.45 }}
-                    >
-                      <ArrowRight size={15} color={COLOR.primary} />
-                    </button>
-                  </form>
+              <ProcessStep title="Demand" subtitle={demand.interest.summary} status={isHighDemand(vehicle) ? "done" : "pending"} last>
+                <div style={{ marginTop: 11, border: `1px solid ${COLOR.borderSoft}`, borderRadius: 12, padding: "0 13px" }}>
+                  <DemandRow icon={Eye} label="Page views" value={String(demand.page.pageViews)} sub={`${demand.page.avgScrollDepth}% scroll · ${demand.page.sectionReached}`} first />
+                  <DemandRow icon={MousePointerClick} label="CTA clicks" value={String(demand.clicks.ctaClicks)} />
+                  <DemandRow icon={ImageOff} label="Photos opened" value={String(demand.vehicle.photosOpened)} sub={demand.vehicle.photosReopened > 0 ? `${demand.vehicle.photosReopened} re-opened` : undefined} />
+                  <DemandRow icon={FileText} label="Window sticker" value={demand.vehicle.windowStickerViewed ? "Viewed" : "Not viewed"} tone={demand.vehicle.windowStickerViewed ? "positive" : "muted"} />
+                  <DemandRow icon={RotateCw} label="360° spin" value={demand.vehicle.spin360Viewed ? "Viewed" : "Not viewed"} tone={demand.vehicle.spin360Viewed ? "positive" : "muted"} />
+                  <DemandRow
+                    icon={Check}
+                    label="Form"
+                    value={demand.forms.submitted ? "Submitted" : demand.forms.started ? "Started" : "Not started"}
+                    tone={demand.forms.submitted ? "positive" : demand.forms.started ? "warning" : "muted"}
+                  />
                 </div>
               </ProcessStep>
-
-              <ProcessStep title="At the desk" subtitle="Full thread handed over — nothing re-asked" status="future" />
-              <ProcessStep title="In the service drive" subtitle="After delivery, first visit booked" status="future" last />
             </div>
           </div>
         </div>
@@ -415,6 +376,40 @@ function ProcessStep({
         <span style={{ display: "block", marginTop: 5, fontSize: 12.5, fontWeight: 500, color: "rgba(40,35,70,0.45)", lineHeight: 1.5 }}>{subtitle}</span>
         {children}
       </span>
+    </div>
+  )
+}
+
+const DEMAND_TONE_COLOR: Record<"positive" | "warning" | "muted" | "default", string> = {
+  positive: "rgb(10,124,74)",
+  warning: "rgb(178,94,0)",
+  muted: "rgba(40,35,70,0.4)",
+  default: COLOR.ink,
+}
+
+function DemandRow({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  tone = "default",
+  first = false,
+}: {
+  icon: typeof Eye
+  label: string
+  value: string
+  sub?: string
+  tone?: "positive" | "warning" | "muted" | "default"
+  first?: boolean
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", boxSizing: "border-box", padding: "11px 0", borderTop: first ? "none" : `1px solid ${COLOR.borderSofter}` }}>
+      <Icon size={14} color="rgba(40,35,70,0.4)" style={{ flexShrink: 0 }} />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 13.5, fontWeight: 500, color: "rgba(40,35,70,0.6)", whiteSpace: "nowrap" }}>{label}</span>
+        {sub && <span style={{ display: "block", marginTop: 2, fontSize: 11.5, fontWeight: 500, color: "rgba(40,35,70,0.4)" }}>{sub}</span>}
+      </span>
+      <span style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 700, color: DEMAND_TONE_COLOR[tone] }}>{value}</span>
     </div>
   )
 }

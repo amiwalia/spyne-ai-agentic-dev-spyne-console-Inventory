@@ -63,6 +63,38 @@ export interface HoldingCostBucket {
   count: number
 }
 
+/**
+ * Shopper-engagement signal for one vehicle's listing, rolled up from the
+ * site chatbot's tracked event categories (page, clicks, vehicle media,
+ * interest, forms). Interest is kept as a summarized record, not a raw
+ * event pile — matching how the tracker itself treats that category.
+ */
+export interface DemandSignal {
+  page: {
+    pageViews: number
+    avgScrollDepth: number
+    sectionReached: string
+    exitIntent: boolean
+  }
+  clicks: {
+    ctaClicks: number
+  }
+  vehicle: {
+    photosOpened: number
+    photosReopened: number
+    galleryFinished: boolean
+    windowStickerViewed: boolean
+    spin360Viewed: boolean
+  }
+  interest: {
+    summary: string
+  }
+  forms: {
+    started: boolean
+    submitted: boolean
+  }
+}
+
 export interface SoldVehicle {
   id: string
   stockNumber: string

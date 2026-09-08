@@ -1,4 +1,4 @@
-import type { DaysSupplyBreakdownEntry, HoldingCostBucket, SoldVehicle, TimeToMarketBucket, Vehicle } from "./types"
+import type { DaysSupplyBreakdownEntry, DemandSignal, HoldingCostBucket, SoldVehicle, TimeToMarketBucket, Vehicle } from "./types"
 
 // A fixed reference instant, not `new Date()` — mock data is computed once at
 // module scope, which runs independently on the server (SSR) and the client
@@ -697,6 +697,44 @@ export const HIGH_DEMAND_THRESHOLD = 4
 
 export function isHighDemand(v: Vehicle): boolean {
   return v.salesInquiries >= HIGH_DEMAND_THRESHOLD
+}
+
+/**
+ * Derives a per-vehicle engagement snapshot from `salesInquiries` — deterministic
+ * (never `new Date()`/`Math.random()`) so it stays identical across server and
+ * client renders. Stands in for what the site chatbot's tracker would actually
+ * roll up per VDP: page behavior, CTA clicks, vehicle-media interaction, an
+ * inferred interest summary, and form activity.
+ */
+export function getDemandSignal(v: Vehicle): DemandSignal {
+  const n = v.salesInquiries
+  const scrollDepth = Math.min(100, 40 + n * 7)
+  const sectionReached = scrollDepth >= 80 ? "Trade-in estimator" : scrollDepth >= 55 ? "Financing calculator" : "Overview"
+
+  let summary: string
+  if (n >= 7) {
+    summary = "Ready to buy — asked about trade-in value, ran the financing calculator twice, requested a test drive slot."
+  } else if (n >= HIGH_DEMAND_THRESHOLD) {
+    summary = "Actively comparing — reopened photos, checked the window sticker, started a finance application."
+  } else if (n >= 2) {
+    summary = "Browsing with intent — viewed the full gallery, no form activity yet."
+  } else {
+    summary = "Early-stage browsing — a single short visit, exited from the photo gallery."
+  }
+
+  return {
+    page: { pageViews: n * 3 + 1, avgScrollDepth: scrollDepth, sectionReached, exitIntent: n < 2 },
+    clicks: { ctaClicks: n * 2 },
+    vehicle: {
+      photosOpened: v.photoUrl ? n + 1 : 0,
+      photosReopened: v.photoUrl && n >= 3 ? Math.floor(n / 3) : 0,
+      galleryFinished: v.photoUrl !== null && n >= 3,
+      windowStickerViewed: n >= 3,
+      spin360Viewed: n >= 6,
+    },
+    interest: { summary },
+    forms: { started: n >= 2, submitted: n >= 5 },
+  }
 }
 
 export function totalDaysSupply(vehicles: Vehicle[]): number {
