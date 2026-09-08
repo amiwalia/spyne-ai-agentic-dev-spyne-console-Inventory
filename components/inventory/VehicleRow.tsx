@@ -5,9 +5,8 @@ import type { Vehicle } from "@/lib/types"
 import { formatCurrency, formatListedAt, formatMileage } from "@/lib/format"
 import { isHighDemand } from "@/lib/mock-data"
 import { COLOR, GRADIENT } from "@/lib/tokens"
-import { SupplyStatusBadge } from "./SupplyStatusBadge"
 
-const GRID_COLUMNS = "36px 2.6fr 1.6fr 1fr 1fr 1fr 150px"
+const GRID_COLUMNS = "36px 3.2fr 1fr 1fr 1fr 150px"
 const CAPTION = "rgb(153,170,170)"
 
 function holdingSeverityPct(cost: number): number {
@@ -110,13 +109,12 @@ export function VehicleRow({ vehicle, selected, onToggle, onTakeAction }: Vehicl
             {vehicle.stockNumber} · {vehicle.vin}
           </p>
           <p style={{ margin: "2px 0 0", fontSize: 11.5, color: CAPTION }}>{formatMileage(vehicle.mileage)}</p>
+          {highDemand && (
+            <div style={{ marginTop: 6 }}>
+              <HighDemandTag />
+            </div>
+          )}
         </div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-start" }}>
-        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: COLOR.ink }}>{vehicle.bodyType}</p>
-        <p style={{ margin: 0, fontSize: 11, color: CAPTION }}>{vehicle.daysSupply}d supply</p>
-        {highDemand ? <HighDemandTag /> : <SupplyStatusBadge status={vehicle.daysSupplyStatus} />}
       </div>
 
       <div style={{ fontSize: 15, fontWeight: 700, color: COLOR.ink }}>{formatCurrency(vehicle.price)}</div>
