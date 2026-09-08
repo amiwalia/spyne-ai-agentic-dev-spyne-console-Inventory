@@ -1,15 +1,67 @@
 "use client"
 
-import { ArrowRight, Download, ExternalLink, ImageOff } from "lucide-react"
-import type { Vehicle } from "@/lib/types"
+import { ArrowRight, CheckCircle2, Download, ExternalLink, Flame, ImageOff, TrendingDown, TrendingUp } from "lucide-react"
+import type { DaysSupplyStatus, Vehicle } from "@/lib/types"
 import { formatCurrency, formatListedAt, formatMileage } from "@/lib/format"
+import { isHighDemand } from "@/lib/mock-data"
 import { COLOR, GRADIENT } from "@/lib/tokens"
 
-const GRID_COLUMNS = "36px 2.6fr 1.3fr 1fr 1.2fr 1fr 0.9fr 150px"
+const GRID_COLUMNS = "36px 2.6fr 1.6fr 1fr 1fr 1fr 150px"
 const CAPTION = "rgb(153,170,170)"
 
 function holdingSeverityPct(cost: number): number {
   return Math.min(100, Math.max(10, Math.round((cost / 4000) * 100)))
+}
+
+const SUPPLY_STATUS_META: Record<DaysSupplyStatus, { label: string; bg: string; text: string; icon: typeof TrendingUp }> = {
+  overstocked: { label: "Overstocked", bg: "rgb(253,236,234)", text: "rgb(192,38,26)", icon: TrendingDown },
+  understocked: { label: "Short Supply", bg: "rgb(234,240,253)", text: "rgb(37,84,214)", icon: TrendingUp },
+  on_target: { label: "On Target", bg: "rgb(231,247,239)", text: "rgb(10,124,74)", icon: CheckCircle2 },
+}
+
+function SupplyStatusBadge({ status }: { status: DaysSupplyStatus }) {
+  const meta = SUPPLY_STATUS_META[status]
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 9px 3px 7px",
+        borderRadius: 999,
+        background: meta.bg,
+        color: meta.text,
+        fontSize: 11,
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <meta.icon size={11} />
+      {meta.label}
+    </span>
+  )
+}
+
+function HighDemandTag() {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 9px 3px 7px",
+        borderRadius: 999,
+        background: "rgb(255,244,229)",
+        color: "rgb(178,94,0)",
+        fontSize: 11,
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <Flame size={11} />
+      High Demand
+    </span>
+  )
 }
 
 interface VehicleRowProps {
@@ -20,7 +72,7 @@ interface VehicleRowProps {
 }
 
 export function VehicleRow({ vehicle, selected, onToggle, onTakeAction }: VehicleRowProps) {
-  const overstocked = vehicle.daysSupplyStatus === "overstocked"
+  const highDemand = isHighDemand(vehicle)
 
   return (
     <div
@@ -89,21 +141,13 @@ export function VehicleRow({ vehicle, selected, onToggle, onTakeAction }: Vehicl
         </div>
       </div>
 
-      <div>
-        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: overstocked ? COLOR.dangerText : COLOR.ink }}>{vehicle.bodyType}</p>
-        <p style={{ margin: "3px 0 0", fontSize: 11.5, fontWeight: 500, color: overstocked ? COLOR.dangerText : CAPTION }}>
-          {vehicle.daysSupply}d supply · {overstocked ? "Overstocked" : "On target"}
-        </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-start" }}>
+        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: COLOR.ink }}>{vehicle.bodyType}</p>
+        <p style={{ margin: 0, fontSize: 11, color: CAPTION }}>{vehicle.daysSupply}d supply</p>
+        {highDemand ? <HighDemandTag /> : <SupplyStatusBadge status={vehicle.daysSupplyStatus} />}
       </div>
 
       <div style={{ fontSize: 15, fontWeight: 700, color: COLOR.ink }}>{formatCurrency(vehicle.price)}</div>
-
-      <div>
-        <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 13px", borderRadius: 9, background: COLOR.badgeBg, color: COLOR.textSecondary, fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}>
-          {vehicle.source.channel}
-        </span>
-        <p style={{ margin: "5px 0 0", fontSize: 11.5, color: CAPTION }}>{vehicle.source.detail}</p>
-      </div>
 
       <div>
         <p style={{ margin: 0, fontSize: 13.5, color: COLOR.ink }}>{vehicle.ageDays} days</p>
@@ -112,14 +156,9 @@ export function VehicleRow({ vehicle, selected, onToggle, onTakeAction }: Vehicl
 
       <div>
         <div style={{ fontSize: 15, fontWeight: 700, color: COLOR.dangerText }}>{formatCurrency(vehicle.holdingCost)}</div>
-        <div style={{ height: 5, borderRadius: 4, background: "rgba(40,35,70,0.08)", margin: "7px 0 5px", width: 90, overflow: "hidden" }}>
+        <div style={{ height: 5, borderRadius: 4, background: "rgba(40,35,70,0.08)", margin: "7px 0 0", width: 90, overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${holdingSeverityPct(vehicle.holdingCost)}%`, borderRadius: 4, background: GRADIENT.holdingBar }} />
         </div>
-        {vehicle.holdingCostNote && (
-          <p style={{ margin: 0, fontSize: 10.5, fontWeight: 600, color: vehicle.holdingCostNote.kind === "add_cost_price" ? COLOR.primary : COLOR.dangerText }}>
-            {vehicle.holdingCostNote.text}
-          </p>
-        )}
       </div>
 
       <div>

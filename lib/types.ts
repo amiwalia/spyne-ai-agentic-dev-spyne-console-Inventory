@@ -1,6 +1,6 @@
 export type Condition = "new" | "pre-owned"
 
-export type DaysSupplyStatus = "on_target" | "overstocked"
+export type DaysSupplyStatus = "on_target" | "overstocked" | "understocked"
 
 export type SourceChannel = "IMS" | "Website" | "Marketplace"
 
@@ -37,6 +37,8 @@ export interface Vehicle {
   listedAt: string
   holdingCost: number
   holdingCostNote?: HoldingCostNote
+  /** Sales inquiries Vini AI has logged for this unit in the last 14 days — the demand signal. */
+  salesInquiries: number
   condition: Condition
   needsAction: {
     noPhotos: boolean

@@ -59,6 +59,7 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
       ageDays: 0,
       listedAt: new Date().toISOString(),
       holdingCost: 0,
+      salesInquiries: 0,
       condition,
       needsAction: { noPhotos: true, needsPromotion: false, notLiveYet: true },
     }

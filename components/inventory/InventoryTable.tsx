@@ -5,9 +5,9 @@ import { VehicleRow } from "./VehicleRow"
 import { EmptyState } from "./EmptyState"
 import { COLOR, SHADOW } from "@/lib/tokens"
 
-const GRID_COLUMNS = "36px 2.6fr 1.3fr 1fr 1.2fr 1fr 0.9fr 150px"
+const GRID_COLUMNS = "36px 2.6fr 1.6fr 1fr 1fr 1fr 150px"
 const SORTABLE_COLUMNS = new Set(["Type", "Price", "Age", "Hold. Cost"])
-const COLUMNS = ["Vehicle", "Type", "Price", "Source", "Age", "Hold. Cost", "Action"]
+const COLUMNS = ["Vehicle", "Type", "Price", "Age", "Hold. Cost", "Action"]
 
 function SortChevron() {
   return (
