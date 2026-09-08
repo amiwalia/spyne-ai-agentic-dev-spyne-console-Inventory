@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import { ArrowLeft, Check, Eye, FileText, ImageOff, MousePointerClick, RotateCw } from "lucide-react"
+import { ArrowLeft, Check, Eye, ImageOff, MousePointerClick, RotateCw } from "lucide-react"
 import type { Vehicle } from "@/lib/types"
 import { formatCurrency, formatMileage } from "@/lib/format"
 import { getDemandSignal, isHighDemand } from "@/lib/mock-data"
@@ -265,14 +265,7 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onAdjustPrice
                   <DemandRow icon={Eye} label="Page views" value={String(demand.page.pageViews)} sub={`${demand.page.avgScrollDepth}% scroll · ${demand.page.sectionReached}`} first />
                   <DemandRow icon={MousePointerClick} label="CTA clicks" value={String(demand.clicks.ctaClicks)} />
                   <DemandRow icon={ImageOff} label="Photos opened" value={String(demand.vehicle.photosOpened)} sub={demand.vehicle.photosReopened > 0 ? `${demand.vehicle.photosReopened} re-opened` : undefined} />
-                  <DemandRow icon={FileText} label="Window sticker" value={demand.vehicle.windowStickerViewed ? "Viewed" : "Not viewed"} tone={demand.vehicle.windowStickerViewed ? "positive" : "muted"} />
                   <DemandRow icon={RotateCw} label="360° spin" value={demand.vehicle.spin360Viewed ? "Viewed" : "Not viewed"} tone={demand.vehicle.spin360Viewed ? "positive" : "muted"} />
-                  <DemandRow
-                    icon={Check}
-                    label="Form"
-                    value={demand.forms.submitted ? "Submitted" : demand.forms.started ? "Started" : "Not started"}
-                    tone={demand.forms.submitted ? "positive" : demand.forms.started ? "warning" : "muted"}
-                  />
                 </div>
               </ProcessStep>
             </div>
