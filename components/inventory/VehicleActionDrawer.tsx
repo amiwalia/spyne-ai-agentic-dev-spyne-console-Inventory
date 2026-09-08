@@ -5,6 +5,9 @@ import { ArrowLeft, ArrowRight, Check, ImageOff } from "lucide-react"
 import type { Vehicle } from "@/lib/types"
 import { formatCurrency, formatMileage } from "@/lib/format"
 import { COLOR, GRADIENT, SHELL } from "@/lib/tokens"
+import { VehicleDetailsTab } from "./vdp/VehicleDetailsTab"
+import { MerchandiseStatusTab } from "./vdp/MerchandiseStatusTab"
+import { PublishStatusTab } from "./vdp/PublishStatusTab"
 
 type ActionKey = "noPhotos" | "needsPromotion" | "notLiveYet"
 
@@ -195,30 +198,14 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onAdjustPrice
                   </>
                 )}
 
-                {tab === "Vehicle Details" && (
-                  <div style={{ paddingBottom: 4 }}>
-                    <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: COLOR.ink }}>Details</h2>
-                    <DetailGrid rows={DETAIL_ROWS(vehicle)} />
-                  </div>
-                )}
+                {tab === "Vehicle Details" && <VehicleDetailsTab key={vehicle.id} vehicle={vehicle} />}
 
                 {tab === "Merchandise Status" && (
-                  <div style={{ paddingBottom: 4, display: "flex", flexDirection: "column", gap: 10 }}>
-                    {CHECKLIST.map((row) => (
-                      <ChecklistLine key={row.key} label={row.label} done={!vehicle.needsAction[row.key]} value={row.value} />
-                    ))}
-                    {!merchandisedDone && (
-                      <button type="button" onClick={handleFixNow} className="vdp-fix-btn" style={{ marginTop: 6 }}>
-                        Fix now
-                      </button>
-                    )}
-                  </div>
+                  <MerchandiseStatusTab vehicle={vehicle} onFixPhotos={() => onResolve(vehicle.id, "noPhotos")} />
                 )}
 
                 {tab === "Publish Status" && (
-                  <div style={{ paddingBottom: 4 }}>
-                    <ChecklistLine label="Website listing" done={!vehicle.needsAction.notLiveYet} value="Not live" />
-                  </div>
+                  <PublishStatusTab vehicle={vehicle} onFixListing={() => onResolve(vehicle.id, "notLiveYet")} />
                 )}
               </div>
             </div>
@@ -370,15 +357,6 @@ function DetailGrid({ rows }: { rows: { label: string; value: string }[] }) {
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-function ChecklistLine({ label, done, value }: { label: string; done: boolean; value: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", border: `1px solid ${COLOR.borderCard}`, borderRadius: 12 }}>
-      <span style={{ fontSize: 13.5, fontWeight: 500, color: "rgba(40,35,70,0.6)" }}>{label}</span>
-      <span style={{ fontSize: 13.5, fontWeight: 700, color: done ? "rgb(10,124,74)" : "rgb(192,38,26)" }}>{done ? "Done" : value}</span>
     </div>
   )
 }
