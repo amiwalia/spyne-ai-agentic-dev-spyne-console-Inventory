@@ -13,7 +13,7 @@ const CHIPS: { value: QuickFilter; label: string }[] = [
   { value: "overstocked", label: "Overstocked" },
 ]
 
-const PLACEHOLDERS = ["Search by Year, Make, Modal", "where is my VIN?", "try '2022 Camry'"]
+const PLACEHOLDERS = ["Search any VIN from Spyne", "Search by Year, Make, Modal", "Enter a VIN or Stock#", "where is my VIN?"]
 
 interface FilterBarProps {
   search: string

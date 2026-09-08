@@ -8,7 +8,7 @@ import { VehicleTabs, type TabValue } from "@/components/inventory/VehicleTabs"
 import { FilterBar, type QuickFilter } from "@/components/inventory/FilterBar"
 import { KpiCard } from "@/components/inventory/KpiCard"
 import { DaysSupplySegmentPopover } from "@/components/inventory/DaysSupplySegmentPopover"
-import { InventoryTable } from "@/components/inventory/InventoryTable"
+import { InventoryTable, type SortDirection, type SortKey } from "@/components/inventory/InventoryTable"
 import { Pagination } from "@/components/inventory/Pagination"
 import { NeedsActionDrawer } from "@/components/inventory/NeedsActionDrawer"
 import { VehicleActionDrawer } from "@/components/inventory/VehicleActionDrawer"
@@ -38,6 +38,8 @@ export default function InventoryPage() {
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(emptyAdvancedFilters())
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
   const [holdingCostPerDay, setHoldingCostPerDay] = useState(50)
   const [actionVehicleId, setActionVehicleId] = useState<string | null>(null)
   const [addVehicleOpen, setAddVehicleOpen] = useState(false)
@@ -101,10 +103,27 @@ export default function InventoryPage() {
     })
   }, [vehicles, tab, search, quickFilters, advancedFilters])
 
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered
+    const factor = sortDirection === "asc" ? 1 : -1
+    const getValue = (v: Vehicle) => (sortKey === "price" ? v.price : sortKey === "age" ? v.ageDays : v.holdingCost)
+    return [...filtered].sort((a, b) => (getValue(a) - getValue(b)) * factor)
+  }, [filtered, sortKey, sortDirection])
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"))
+    } else {
+      setSortKey(key)
+      setSortDirection("desc")
+    }
+    setPage(1)
+  }
+
   const paginated = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE
-    return filtered.slice(start, start + PAGE_SIZE)
-  }, [filtered, page])
+    return sorted.slice(start, start + PAGE_SIZE)
+  }, [sorted, page])
 
   const daysSupplyBreakdown = useMemo(() => getDaysSupplyBreakdown(vehicles), [vehicles])
   const timeToMarketBuckets = useMemo(() => getTimeToMarketBuckets(vehicles), [vehicles])
@@ -268,6 +287,9 @@ export default function InventoryPage() {
               onToggle={toggleSelected}
               onToggleAll={toggleAll}
               onTakeAction={setActionVehicleId}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSort={handleSort}
             />
             <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage} />
           </div>
