@@ -13,24 +13,26 @@ function holdingSeverityPct(cost: number): number {
   return Math.min(100, Math.max(10, Math.round((cost / 4000) * 100)))
 }
 
-function HighDemandTag() {
+function HighDemandBadge() {
   return (
     <span
+      title="High Demand"
       style={{
+        position: "absolute",
+        top: -6,
+        left: -6,
         display: "inline-flex",
         alignItems: "center",
-        gap: 4,
-        padding: "3px 9px 3px 7px",
-        borderRadius: 999,
-        background: "rgb(255,244,229)",
-        color: "rgb(178,94,0)",
-        fontSize: 11,
-        fontWeight: 700,
-        whiteSpace: "nowrap",
+        justifyContent: "center",
+        width: 22,
+        height: 22,
+        borderRadius: "50%",
+        background: "rgb(178,94,0)",
+        border: "2px solid #fff",
+        boxShadow: "0 1px 3px rgba(20,16,40,0.25)",
       }}
     >
-      <Flame size={11} />
-      High Demand
+      <Flame size={11} color="#fff" />
     </span>
   )
 }
@@ -100,6 +102,7 @@ export function VehicleRow({ vehicle, selected, onToggle, onTakeAction }: Vehicl
               <ExternalLink size={10} color="#fff" />
             </span>
           </div>
+          {highDemand && <HighDemandBadge />}
         </div>
         <div style={{ minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: COLOR.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -109,11 +112,6 @@ export function VehicleRow({ vehicle, selected, onToggle, onTakeAction }: Vehicl
             {vehicle.stockNumber} · {vehicle.vin}
           </p>
           <p style={{ margin: "2px 0 0", fontSize: 11.5, color: CAPTION }}>{formatMileage(vehicle.mileage)}</p>
-          {highDemand && (
-            <div style={{ marginTop: 6 }}>
-              <HighDemandTag />
-            </div>
-          )}
         </div>
       </div>
 
