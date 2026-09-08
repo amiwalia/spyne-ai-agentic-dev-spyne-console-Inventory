@@ -26,6 +26,8 @@ export interface Vehicle {
   trim?: string
   mileage: number
   bodyType: string
+  exteriorColor?: string
+  interiorTrim?: string
   photoUrl: string | null
   price: number
   daysSupply: number

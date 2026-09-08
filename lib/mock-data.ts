@@ -7,8 +7,14 @@ import type {
   Vehicle,
 } from "./types"
 
+// A fixed reference instant, not `new Date()` — mock data is computed once at
+// module scope, which runs independently on the server (SSR) and the client
+// (hydration). Anything time-dependent must be deterministic or the two
+// renders disagree and React throws a hydration-mismatch error.
+const MOCK_NOW = new Date("2026-09-08T15:00:00.000Z")
+
 function daysAgo(days: number): string {
-  const d = new Date()
+  const d = new Date(MOCK_NOW)
   d.setDate(d.getDate() - days)
   return d.toISOString()
 }
@@ -24,6 +30,8 @@ export const VEHICLES: Vehicle[] = [
     trim: "SE",
     mileage: 9412,
     bodyType: "Midsize SUV",
+    exteriorColor: "Phantom Black",
+    interiorTrim: "Black Cloth",
     photoUrl: null,
     price: 34900,
     daysSupply: 72,

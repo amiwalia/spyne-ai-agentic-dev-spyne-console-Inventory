@@ -1,10 +1,16 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ChevronDown, Plus } from "lucide-react"
 import { COLOR, GRADIENT, SHADOW } from "@/lib/tokens"
 
 export function InventoryHeader({ holdingCostPerDay = 50, onAddVehicle }: { holdingCostPerDay?: number; onAddVehicle: () => void }) {
-  const lastSynced = new Date().toLocaleString("en-US", { hour: "numeric", minute: "2-digit" })
+  // Computed client-side only, after mount — a server-rendered timestamp would
+  // near-inevitably mismatch the client's and trigger a hydration error.
+  const [lastSynced, setLastSynced] = useState("")
+  useEffect(() => {
+    setLastSynced(new Date().toLocaleString("en-US", { hour: "numeric", minute: "2-digit" }))
+  }, [])
 
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
