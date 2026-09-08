@@ -175,32 +175,6 @@ export default function InventoryPage() {
 
           <div style={{ display: "flex", gap: 16, marginTop: 20 }}>
             <KpiCard
-              titleLead="Days"
-              titleBold="Supply"
-              tooltip="Units on hand ÷ the daily retail rate over the trailing 90 days. Age tells you to reprice a unit; this tells you to stop buying the type."
-              value={String(totalDaysSupply(vehicles))}
-              unit="Days"
-              wash="wash-health.svg"
-              glyph="glyph-health.png"
-              legend={[
-                {
-                  tone: "success",
-                  label: "On target",
-                  count: `${onTargetTypes?.typeCount ?? 0} types`,
-                  tooltipTitle: "On target",
-                  tooltipDetail: onTargetTypes?.bodyTypes.map((t) => `${t.name} ${t.days}d`).join(" · "),
-                },
-                {
-                  tone: "danger",
-                  label: "Overstocked",
-                  count: `${overstockedTypes?.typeCount ?? 0} type${(overstockedTypes?.typeCount ?? 0) === 1 ? "" : "s"}`,
-                  tooltipTitle: "Overstocked",
-                  tooltipDetail: overstockedTypes?.bodyTypes.map((t) => `${t.name} ${t.days}d`).join(" · "),
-                },
-              ]}
-            />
-
-            <KpiCard
               titleLead="Time to"
               titleBold="Market"
               tooltip="Average time from vehicle acquisition to a published, ready-to-sell listing."
@@ -228,6 +202,32 @@ export default function InventoryPage() {
                 label: bucket.label,
                 count: bucket.count,
               }))}
+            />
+
+            <KpiCard
+              titleLead="Days"
+              titleBold="Supply"
+              tooltip="Units on hand ÷ the daily retail rate over the trailing 90 days. Age tells you to reprice a unit; this tells you to stop buying the type."
+              value={String(totalDaysSupply(vehicles))}
+              unit="Days"
+              wash="wash-health.svg"
+              glyph="glyph-health.png"
+              legend={[
+                {
+                  tone: "success",
+                  label: "On target",
+                  count: `${onTargetTypes?.typeCount ?? 0} types`,
+                  tooltipTitle: "On target",
+                  tooltipDetail: onTargetTypes?.bodyTypes.map((t) => `${t.name} ${t.days}d`).join(" · "),
+                },
+                {
+                  tone: "danger",
+                  label: "Overstocked",
+                  count: `${overstockedTypes?.typeCount ?? 0} type${(overstockedTypes?.typeCount ?? 0) === 1 ? "" : "s"}`,
+                  tooltipTitle: "Overstocked",
+                  tooltipDetail: overstockedTypes?.bodyTypes.map((t) => `${t.name} ${t.days}d`).join(" · "),
+                },
+              ]}
             />
           </div>
 
