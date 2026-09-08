@@ -12,7 +12,7 @@ import { Pagination } from "@/components/inventory/Pagination"
 import { NeedsActionDrawer } from "@/components/inventory/NeedsActionDrawer"
 import { VehicleActionDrawer } from "@/components/inventory/VehicleActionDrawer"
 import { AddVehicleModal } from "@/components/inventory/AddVehicleModal"
-import { FiltersPanel, type AdvancedFilters } from "@/components/inventory/FiltersPanel"
+import { FiltersPanel, emptyAdvancedFilters, type AdvancedFilters } from "@/components/inventory/FiltersPanel"
 import { Toast } from "@/components/inventory/Toast"
 import {
   VEHICLES,
@@ -29,14 +29,13 @@ import type { Vehicle } from "@/lib/types"
 import { formatCurrency } from "@/lib/format"
 
 const PAGE_SIZE = 8
-const EMPTY_ADVANCED_FILTERS: AdvancedFilters = { minPrice: "", maxPrice: "", bodyTypes: new Set(), sources: new Set() }
 
 export default function InventoryPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(VEHICLES)
   const [tab, setTab] = useState<TabValue>("all")
   const [search, setSearch] = useState("")
   const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set())
-  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(EMPTY_ADVANCED_FILTERS)
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(emptyAdvancedFilters())
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
   const [holdingCostPerDay, setHoldingCostPerDay] = useState(50)
@@ -68,12 +67,12 @@ export default function InventoryPage() {
     [vehicles]
   )
 
-  const bodyTypeOptions = useMemo(() => Array.from(new Set(vehicles.map((v) => v.bodyType))).sort(), [vehicles])
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     const min = advancedFilters.minPrice ? Number(advancedFilters.minPrice) : null
     const max = advancedFilters.maxPrice ? Number(advancedFilters.maxPrice) : null
+    // Mirrors FiltersPanel's illustrative "1 vehicle has a 360 spin" count.
+    const spin360VehicleId = vehicles.find((v) => !v.needsAction.noPhotos)?.id
     return vehicles.filter((v) => {
       if (tab !== "all" && v.condition !== tab) return false
       if (q) {
@@ -90,6 +89,13 @@ export default function InventoryPage() {
       if (max !== null && v.price > max) return false
       if (advancedFilters.bodyTypes.size > 0 && !advancedFilters.bodyTypes.has(v.bodyType)) return false
       if (advancedFilters.sources.size > 0 && !advancedFilters.sources.has(v.source.channel)) return false
+      if (advancedFilters.makes.size > 0 && !advancedFilters.makes.has(v.make)) return false
+      if (advancedFilters.models.size > 0 && !advancedFilters.models.has(v.model)) return false
+      if (advancedFilters.years.size > 0 && !advancedFilters.years.has(v.year)) return false
+      if (advancedFilters.mediaType.has("capturedMedia") && v.needsAction.noPhotos) return false
+      if (advancedFilters.mediaStatus.has("draft") && !v.needsAction.notLiveYet) return false
+      if ((advancedFilters.mediaStatus.has("imageStudio") || advancedFilters.mediaStatus.has("imageStudioReview")) && v.needsAction.noPhotos) return false
+      if ((advancedFilters.mediaStatus.has("spin360") || advancedFilters.mediaStatus.has("spin360Review")) && v.id !== spin360VehicleId) return false
       return true
     })
   }, [vehicles, tab, search, quickFilters, advancedFilters])
@@ -109,7 +115,14 @@ export default function InventoryPage() {
   const overstockedTypes = daysSupplyBreakdown.find((b) => b.status === "overstocked")
 
   const advancedFilterCount =
-    (advancedFilters.minPrice || advancedFilters.maxPrice ? 1 : 0) + (advancedFilters.bodyTypes.size > 0 ? 1 : 0) + (advancedFilters.sources.size > 0 ? 1 : 0)
+    (advancedFilters.minPrice || advancedFilters.maxPrice ? 1 : 0) +
+    (advancedFilters.bodyTypes.size > 0 ? 1 : 0) +
+    (advancedFilters.sources.size > 0 ? 1 : 0) +
+    (advancedFilters.makes.size > 0 ? 1 : 0) +
+    (advancedFilters.models.size > 0 ? 1 : 0) +
+    (advancedFilters.years.size > 0 ? 1 : 0) +
+    (advancedFilters.mediaStatus.size > 0 ? 1 : 0) +
+    (advancedFilters.mediaType.size > 0 ? 1 : 0)
 
   const toggleSelected = (id: string) => {
     setSelected((prev) => {
@@ -285,8 +298,8 @@ export default function InventoryPage() {
         onClose={() => setFiltersOpen(false)}
         filters={advancedFilters}
         onChange={setAdvancedFilters}
-        bodyTypeOptions={bodyTypeOptions}
-        onReset={() => setAdvancedFilters(EMPTY_ADVANCED_FILTERS)}
+        vehicles={vehicles}
+        onReset={() => setAdvancedFilters(emptyAdvancedFilters())}
       />
 
       <Toast message={toast} />
