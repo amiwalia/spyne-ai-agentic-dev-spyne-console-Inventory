@@ -39,6 +39,7 @@ export default function InventoryPage() {
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(EMPTY_ADVANCED_FILTERS)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
+  const [holdingCostPerDay, setHoldingCostPerDay] = useState(50)
   const [actionVehicleId, setActionVehicleId] = useState<string | null>(null)
   const [addVehicleOpen, setAddVehicleOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -169,7 +170,14 @@ export default function InventoryPage() {
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <Topbar />
         <main className="inventory-console" style={{ flex: 1, padding: 32, display: "flex", flexDirection: "column", gap: 0 }}>
-          <InventoryHeader onAddVehicle={() => setAddVehicleOpen(true)} />
+          <InventoryHeader
+            holdingCostPerDay={holdingCostPerDay}
+            onHoldingCostChange={(v) => {
+              setHoldingCostPerDay(v)
+              flashToast(`Holding cost set to $${v}/day`)
+            }}
+            onAddVehicle={() => setAddVehicleOpen(true)}
+          />
 
           <VehicleTabs active={tab} onChange={(v) => { setTab(v); setPage(1) }} counts={counts} />
 

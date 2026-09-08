@@ -1,10 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronDown, Plus } from "lucide-react"
-import { COLOR, GRADIENT, SHADOW } from "@/lib/tokens"
+import { Plus } from "lucide-react"
+import { GRADIENT, SHADOW } from "@/lib/tokens"
+import { HoldingCostPopover } from "./HoldingCostPopover"
 
-export function InventoryHeader({ holdingCostPerDay = 50, onAddVehicle }: { holdingCostPerDay?: number; onAddVehicle: () => void }) {
+interface InventoryHeaderProps {
+  holdingCostPerDay: number
+  onHoldingCostChange: (value: number) => void
+  onAddVehicle: () => void
+}
+
+export function InventoryHeader({ holdingCostPerDay, onHoldingCostChange, onAddVehicle }: InventoryHeaderProps) {
   // Computed client-side only, after mount — a server-rendered timestamp would
   // near-inevitably mismatch the client's and trigger a hydration error.
   const [lastSynced, setLastSynced] = useState("")
@@ -22,30 +29,7 @@ export function InventoryHeader({ holdingCostPerDay = 50, onAddVehicle }: { hold
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <button
-          type="button"
-          style={{
-            height: 44,
-            minWidth: 160,
-            padding: "0 16px",
-            borderRadius: 12,
-            border: `1px solid ${COLOR.borderSoft}`,
-            background: "transparent",
-            fontWeight: 700,
-            fontSize: 13.5,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            boxShadow: SHADOW.pillBrand,
-          }}
-        >
-          <span style={{ color: COLOR.primary, fontWeight: 600 }}>
-            Holding Cost: <span style={{ fontWeight: 700 }}>${holdingCostPerDay}/day</span>
-          </span>
-          <ChevronDown size={15} color={COLOR.primary} />
-        </button>
+        <HoldingCostPopover value={holdingCostPerDay} onSave={onHoldingCostChange} />
 
         <button
           type="button"
