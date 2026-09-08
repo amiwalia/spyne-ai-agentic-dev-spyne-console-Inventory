@@ -1,4 +1,12 @@
-import type { DaysSupplyBreakdownEntry, DemandSignal, HoldingCostBucket, SoldVehicle, TimeToMarketBucket, Vehicle } from "./types"
+import type {
+  DaysSupplyBreakdownEntry,
+  DemandSignal,
+  HoldingCostBucket,
+  SegmentDaysSupply,
+  SoldVehicle,
+  TimeToMarketBucket,
+  Vehicle,
+} from "./types"
 
 // A fixed reference instant, not `new Date()` — mock data is computed once at
 // module scope, which runs independently on the server (SSR) and the client
@@ -664,6 +672,39 @@ export function getDaysSupplyBreakdown(vehicles: Vehicle[]): DaysSupplyBreakdown
     { status: "on_target", typeCount: onTarget.length, bodyTypes: onTarget },
     { status: "overstocked", typeCount: overstocked.length, bodyTypes: overstocked },
   ]
+}
+
+/**
+ * Per-body-type days-supply rollup for the "view by segment" drill-down —
+ * each body type's vehicle count, average days supply, and majority status.
+ */
+export function getSegmentBreakdown(vehicles: Vehicle[]): SegmentDaysSupply[] {
+  const byType = new Map<string, { totalDays: number; count: number; status: Record<string, number> }>()
+  for (const v of vehicles) {
+    const entry = byType.get(v.bodyType) ?? { totalDays: 0, count: 0, status: {} }
+    entry.totalDays += v.daysSupply
+    entry.count += 1
+    entry.status[v.daysSupplyStatus] = (entry.status[v.daysSupplyStatus] ?? 0) + 1
+    byType.set(v.bodyType, entry)
+  }
+
+  const STATUS_RANK: Record<string, number> = { overstocked: 0, understocked: 1, on_target: 2 }
+
+  const segments: SegmentDaysSupply[] = Array.from(byType.entries()).map(([bodyType, entry]) => {
+    const [dominantStatus] = Object.entries(entry.status).sort((a, b) => b[1] - a[1])[0]
+    return {
+      bodyType,
+      vehicleCount: entry.count,
+      avgDaysSupply: Math.round(entry.totalDays / entry.count),
+      status: dominantStatus as SegmentDaysSupply["status"],
+    }
+  })
+
+  return segments.sort((a, b) => {
+    const rankDiff = STATUS_RANK[a.status] - STATUS_RANK[b.status]
+    if (rankDiff !== 0) return rankDiff
+    return a.status === "understocked" ? a.avgDaysSupply - b.avgDaysSupply : b.avgDaysSupply - a.avgDaysSupply
+  })
 }
 
 export function getTimeToMarketBuckets(vehicles: Vehicle[]): TimeToMarketBucket[] {

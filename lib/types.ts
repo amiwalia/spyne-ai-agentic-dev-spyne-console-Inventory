@@ -53,6 +53,13 @@ export interface DaysSupplyBreakdownEntry {
   bodyTypes: { name: string; days: number }[]
 }
 
+export interface SegmentDaysSupply {
+  bodyType: string
+  vehicleCount: number
+  avgDaysSupply: number
+  status: DaysSupplyStatus
+}
+
 export interface TimeToMarketBucket {
   label: string
   count: number

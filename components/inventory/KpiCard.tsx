@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { COLOR, KPI_ART_BASE, SHADOW } from "@/lib/tokens"
 
 export interface KpiLegendItem {
@@ -20,6 +20,7 @@ export interface KpiCardProps {
   wash: string
   glyph: string
   legend: KpiLegendItem[]
+  footer?: ReactNode
 }
 
 const DOT_COLOR: Record<KpiLegendItem["tone"], string> = {
@@ -37,7 +38,7 @@ function InfoIcon({ size = 17 }: { size?: number }) {
   )
 }
 
-export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyph, legend }: KpiCardProps) {
+export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyph, legend, footer }: KpiCardProps) {
   const [titleTip, setTitleTip] = useState(false)
   const [legendTip, setLegendTip] = useState<number | null>(null)
 
@@ -171,6 +172,8 @@ export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyp
           </span>
         ))}
       </div>
+
+      {footer && <div style={{ position: "relative", marginTop: 12 }}>{footer}</div>}
     </div>
   )
 }

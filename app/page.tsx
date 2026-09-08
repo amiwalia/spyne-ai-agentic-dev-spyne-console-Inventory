@@ -7,6 +7,7 @@ import { InventoryHeader } from "@/components/inventory/InventoryHeader"
 import { VehicleTabs, type TabValue } from "@/components/inventory/VehicleTabs"
 import { FilterBar, type QuickFilter } from "@/components/inventory/FilterBar"
 import { KpiCard } from "@/components/inventory/KpiCard"
+import { DaysSupplySegmentPopover } from "@/components/inventory/DaysSupplySegmentPopover"
 import { InventoryTable } from "@/components/inventory/InventoryTable"
 import { Pagination } from "@/components/inventory/Pagination"
 import { NeedsActionDrawer } from "@/components/inventory/NeedsActionDrawer"
@@ -246,6 +247,7 @@ export default function InventoryPage() {
                   tooltipDetail: overstockedTypes?.bodyTypes.map((t) => `${t.name} ${t.days}d`).join(" · "),
                 },
               ]}
+              footer={<DaysSupplySegmentPopover vehicles={vehicles} />}
             />
           </div>
 
