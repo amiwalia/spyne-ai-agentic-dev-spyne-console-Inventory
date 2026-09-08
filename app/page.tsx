@@ -18,9 +18,8 @@ import {
   VEHICLES,
   getDaysSupplyBreakdown,
   getHoldingCostBuckets,
-  getNeedsActionBreakdown,
   getTimeToMarketBuckets,
-  needsAnyAction,
+  isHighDemand,
   totalDaysSupply,
   totalHoldingCost,
   totalTimeToMarket,
@@ -85,6 +84,7 @@ export default function InventoryPage() {
       if (quickFilters.has("overstocked") && v.daysSupplyStatus !== "overstocked") return false
       if (quickFilters.has("needsPromotion") && !v.needsAction.needsPromotion) return false
       if (quickFilters.has("notLiveYet") && !v.needsAction.notLiveYet) return false
+      if (quickFilters.has("highDemand") && !isHighDemand(v)) return false
       if (min !== null && v.price < min) return false
       if (max !== null && v.price > max) return false
       if (advancedFilters.bodyTypes.size > 0 && !advancedFilters.bodyTypes.has(v.bodyType)) return false
@@ -108,9 +108,6 @@ export default function InventoryPage() {
   const daysSupplyBreakdown = useMemo(() => getDaysSupplyBreakdown(vehicles), [vehicles])
   const timeToMarketBuckets = useMemo(() => getTimeToMarketBuckets(vehicles), [vehicles])
   const holdingCostBuckets = useMemo(() => getHoldingCostBuckets(vehicles), [vehicles])
-  const needsActionBreakdown = useMemo(() => getNeedsActionBreakdown(vehicles), [vehicles])
-  const needsActionCount = useMemo(() => vehicles.filter(needsAnyAction).length, [vehicles])
-
   const onTargetTypes = daysSupplyBreakdown.find((b) => b.status === "on_target")
   const overstockedTypes = daysSupplyBreakdown.find((b) => b.status === "overstocked")
 
@@ -276,8 +273,7 @@ export default function InventoryPage() {
       </div>
 
       <NeedsActionDrawer
-        breakdown={needsActionBreakdown}
-        total={needsActionCount}
+        vehicles={vehicles}
         onSelectFilter={(filter) => {
           setQuickFilters(new Set([filter]))
           setPage(1)

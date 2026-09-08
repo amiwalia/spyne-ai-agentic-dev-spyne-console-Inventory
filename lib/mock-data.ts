@@ -1,11 +1,4 @@
-import type {
-  DaysSupplyBreakdownEntry,
-  HoldingCostBucket,
-  NeedsActionBreakdown,
-  SoldVehicle,
-  TimeToMarketBucket,
-  Vehicle,
-} from "./types"
+import type { DaysSupplyBreakdownEntry, HoldingCostBucket, SoldVehicle, TimeToMarketBucket, Vehicle } from "./types"
 
 // A fixed reference instant, not `new Date()` — mock data is computed once at
 // module scope, which runs independently on the server (SSR) and the client
@@ -693,20 +686,6 @@ export function getHoldingCostBuckets(vehicles: Vehicle[]): HoldingCostBucket[] 
     { label: "$100 – $500", count: between100And500 },
     { label: "> $500", count: over500 },
   ]
-}
-
-export function getNeedsActionBreakdown(vehicles: Vehicle[]): NeedsActionBreakdown {
-  return {
-    studioOs: {
-      noPhotos: vehicles.filter((v) => v.needsAction.noPhotos).length,
-      needsPromotion: vehicles.filter((v) => v.needsAction.needsPromotion).length,
-      notLiveYet: vehicles.filter((v) => v.needsAction.notLiveYet).length,
-    },
-    // Vini AI (conversational sales/service agent) action items are a separate
-    // workstream from Studio OS merchandising and aren't derived from vehicle
-    // records — seeded with representative counts for this mock.
-    viniAi: { sales: 9, services: 6, receptions: 3 },
-  }
 }
 
 export function needsAnyAction(v: Vehicle): boolean {

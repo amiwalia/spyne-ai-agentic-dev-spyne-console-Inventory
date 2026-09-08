@@ -63,11 +63,6 @@ export interface HoldingCostBucket {
   count: number
 }
 
-export interface NeedsActionBreakdown {
-  studioOs: { noPhotos: number; needsPromotion: number; notLiveYet: number }
-  viniAi: { sales: number; services: number; receptions: number }
-}
-
 export interface SoldVehicle {
   id: string
   stockNumber: string

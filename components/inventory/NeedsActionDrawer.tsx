@@ -1,42 +1,39 @@
 "use client"
 
 import { useState } from "react"
-import { AlertTriangle, ChevronRight, Headset, ImageOff, Megaphone, Radio, ShoppingCart, UserCheck, X } from "lucide-react"
-import type { NeedsActionBreakdown } from "@/lib/types"
+import { AlertTriangle, ChevronRight, Flame, ImageOff, Megaphone, Radio, TrendingDown, X } from "lucide-react"
+import type { Vehicle } from "@/lib/types"
+import { isHighDemand } from "@/lib/mock-data"
 import type { QuickFilter } from "./FilterBar"
 
 interface Row {
   label: string
   count: number
   icon: typeof ImageOff
-  filter?: QuickFilter
+  filter: QuickFilter
 }
 
 interface NeedsActionDrawerProps {
-  breakdown: NeedsActionBreakdown
-  total: number
+  vehicles: Vehicle[]
   onSelectFilter: (filter: QuickFilter) => void
 }
 
 const RED = "rgb(211,0,0)"
 
-export function NeedsActionDrawer({ breakdown, total, onSelectFilter }: NeedsActionDrawerProps) {
+export function NeedsActionDrawer({ vehicles, onSelectFilter }: NeedsActionDrawerProps) {
   const [open, setOpen] = useState(false)
 
-  const studioRows: Row[] = [
-    { label: "No Photos", count: breakdown.studioOs.noPhotos, icon: ImageOff, filter: "noPhotos" },
-    { label: "Need Promotions", count: breakdown.studioOs.needsPromotion, icon: Megaphone, filter: "needsPromotion" },
-    { label: "Not Live Yet", count: breakdown.studioOs.notLiveYet, icon: Radio, filter: "notLiveYet" },
+  const rows: Row[] = [
+    { label: "No Photos", count: vehicles.filter((v) => v.needsAction.noPhotos).length, icon: ImageOff, filter: "noPhotos" },
+    { label: "High Demand Vehicles", count: vehicles.filter(isHighDemand).length, icon: Flame, filter: "highDemand" },
+    { label: "Not Live Yet", count: vehicles.filter((v) => v.needsAction.notLiveYet).length, icon: Radio, filter: "notLiveYet" },
+    { label: "Overstocked", count: vehicles.filter((v) => v.daysSupplyStatus === "overstocked").length, icon: TrendingDown, filter: "overstocked" },
+    { label: "Needs Promotion", count: vehicles.filter((v) => v.needsAction.needsPromotion).length, icon: Megaphone, filter: "needsPromotion" },
   ]
 
-  const viniRows: Row[] = [
-    { label: "Sales", count: breakdown.viniAi.sales, icon: ShoppingCart },
-    { label: "Services", count: breakdown.viniAi.services, icon: Headset },
-    { label: "Receptions", count: breakdown.viniAi.receptions, icon: UserCheck },
-  ]
-
-  const studioTotal = studioRows.reduce((s, r) => s + r.count, 0)
-  const viniTotal = viniRows.reduce((s, r) => s + r.count, 0)
+  const total = vehicles.filter(
+    (v) => v.needsAction.noPhotos || v.needsAction.needsPromotion || v.needsAction.notLiveYet || v.daysSupplyStatus === "overstocked" || isHighDemand(v)
+  ).length
 
   return (
     <>
@@ -98,9 +95,24 @@ export function NeedsActionDrawer({ breakdown, total, onSelectFilter }: NeedsAct
               </p>
             </div>
 
-            <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 16, width: "100%" }}>
-              <CategoryCard title="Studio OS" total={studioTotal} rows={studioRows} onSelectFilter={onSelectFilter} clickable />
-              <CategoryCard title="VINI AI" total={viniTotal} rows={viniRows} onSelectFilter={onSelectFilter} clickable={false} />
+            <div style={{ position: "relative", width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 20, padding: "16px 15px", borderRadius: 16, background: "#fff" }}>
+              {rows.map((row) => (
+                <div
+                  key={row.label}
+                  onClick={() => {
+                    onSelectFilter(row.filter)
+                    setOpen(false)
+                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, height: 20, width: "100%", cursor: "pointer" }}
+                >
+                  <div style={{ flex: "1 0 0px", minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                    <row.icon size={17} color="#636363" strokeWidth={1.6} />
+                    <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "16px", color: "rgb(3,7,18)", whiteSpace: "nowrap" }}>{row.label}</span>
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "rgb(89,79,79)", whiteSpace: "nowrap" }}>{row.count}</span>
+                  <ChevronRight size={13} color="#8D8D8D" />
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -135,48 +147,5 @@ export function NeedsActionDrawer({ breakdown, total, onSelectFilter }: NeedsAct
         </span>
       </button>
     </>
-  )
-}
-
-function CategoryCard({
-  title,
-  total,
-  rows,
-  onSelectFilter,
-  clickable,
-}: {
-  title: string
-  total: number
-  rows: Row[]
-  onSelectFilter: (filter: QuickFilter) => void
-  clickable: boolean
-}) {
-  return (
-    <div style={{ width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 15, padding: "16px 15px", borderRadius: 16, background: "#fff" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-        <span style={{ fontSize: 16, fontWeight: 700, lineHeight: "16px", color: "rgb(32,32,34)" }}>{title}</span>
-        <span style={{ color: RED, whiteSpace: "nowrap" }}>
-          <span style={{ fontSize: 16, fontWeight: 700 }}>{total}</span>
-          <span style={{ fontSize: 14, fontWeight: 700 }}> Vehicle</span>
-        </span>
-      </div>
-      <div style={{ height: 1, width: "100%", flexShrink: 0, background: "linear-gradient(90deg, rgba(235,235,235,0.4) 0%, rgb(235,235,235) 50%, rgba(235,235,235,0.4) 100%)" }} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", marginTop: 4 }}>
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            onClick={() => clickable && row.filter && onSelectFilter(row.filter)}
-            style={{ display: "flex", alignItems: "center", gap: 10, height: 20, width: "100%", cursor: clickable ? "pointer" : "default" }}
-          >
-            <div style={{ flex: "1 0 0px", minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
-              <row.icon size={17} color="#636363" strokeWidth={1.6} />
-              <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "16px", color: "rgb(3,7,18)", whiteSpace: "nowrap" }}>{row.label}</span>
-            </div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "rgb(89,79,79)", whiteSpace: "nowrap" }}>{row.count}</span>
-            <ChevronRight size={13} color="#8D8D8D" />
-          </div>
-        ))}
-      </div>
-    </div>
   )
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Download, Search, SlidersHorizontal } from "lucide-react"
 import { COLOR } from "@/lib/tokens"
 
-export type QuickFilter = "aging60" | "aging40" | "noPhotos" | "overstocked" | "needsPromotion" | "notLiveYet"
+export type QuickFilter = "aging60" | "aging40" | "noPhotos" | "overstocked" | "needsPromotion" | "notLiveYet" | "highDemand"
 
 const CHIPS: { value: QuickFilter; label: string }[] = [
   { value: "aging60", label: "Aging 60+" },
