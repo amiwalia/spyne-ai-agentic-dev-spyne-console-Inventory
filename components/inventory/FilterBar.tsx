@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Download, Search, SlidersHorizontal } from "lucide-react"
 import { COLOR } from "@/lib/tokens"
 
-export type QuickFilter = "aging60" | "aging40" | "noPhotos" | "overstocked" | "needsPromotion" | "notLiveYet" | "highDemand"
+export type QuickFilter = "aging60" | "aging40" | "aging30" | "noPhotos" | "overstocked" | "needsPromotion" | "notLiveYet" | "highDemand" | "needsPriceReview"
 
 const CHIPS: { value: QuickFilter; label: string }[] = [
   { value: "aging60", label: "Aging 60+" },
@@ -15,6 +15,15 @@ const CHIPS: { value: QuickFilter; label: string }[] = [
 
 const PLACEHOLDERS = ["Search any VIN from Spyne", "Search by Year, Make, Modal", "Enter a VIN or Stock#", "where is my VIN?"]
 
+export const PRESET_QUERIES = [
+  "Active and aging past 30 days",
+  "Needs a price review",
+  "Not published",
+  "Waiting on a reply",
+  "Ready for Studio Instant",
+  "Sourced from Marketplace",
+]
+
 interface FilterBarProps {
   search: string
   onSearchChange: (value: string) => void
@@ -23,10 +32,12 @@ interface FilterBarProps {
   onExport: () => void
   onOpenFilters: () => void
   activeAdvancedCount: number
+  onSelectPreset: (query: string) => void
 }
 
-export function FilterBar({ search, onSearchChange, active, onToggle, onExport, onOpenFilters, activeAdvancedCount }: FilterBarProps) {
+export function FilterBar({ search, onSearchChange, active, onToggle, onExport, onOpenFilters, activeAdvancedCount, onSelectPreset }: FilterBarProps) {
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const [showPresets, setShowPresets] = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => setPlaceholderIndex((i) => (i + 1) % PLACEHOLDERS.length), 2600)
@@ -43,11 +54,13 @@ export function FilterBar({ search, onSearchChange, active, onToggle, onExport, 
           aria-label="Search inventory"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
+          onFocus={() => setShowPresets(true)}
+          onBlur={() => setTimeout(() => setShowPresets(false), 150)}
           style={{
             width: "100%",
             height: 38,
             padding: "0 12px 0 36px",
-            border: `1px solid ${COLOR.borderSoft}`,
+            border: `1px solid ${showPresets ? COLOR.primary : COLOR.borderSoft}`,
             borderRadius: 10,
             fontSize: 13,
             fontWeight: 500,
@@ -56,6 +69,7 @@ export function FilterBar({ search, onSearchChange, active, onToggle, onExport, 
             outline: "none",
             fontFamily: "inherit",
             boxSizing: "border-box",
+            boxShadow: showPresets ? `0 0 0 3px color-mix(in srgb, ${COLOR.primary} 14%, transparent)` : "none",
           }}
         />
         {!search && (
@@ -63,6 +77,57 @@ export function FilterBar({ search, onSearchChange, active, onToggle, onExport, 
             <span key={placeholderIndex} className="ph-scroll" style={{ fontSize: 13, color: "rgba(40,35,70,0.42)", whiteSpace: "nowrap" }}>
               {PLACEHOLDERS[placeholderIndex]}
             </span>
+          </div>
+        )}
+
+        {showPresets && (
+          <div
+            className="spyne-animate-slide-up"
+            style={{
+              position: "absolute",
+              top: "calc(100% + 6px)",
+              left: 0,
+              width: 260,
+              zIndex: 50,
+              background: "#fff",
+              borderRadius: 12,
+              border: `1px solid ${COLOR.borderSoft}`,
+              boxShadow: "rgba(20,16,40,0.18) 0px 16px 34px -14px",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "10px 14px 6px", fontSize: 11, fontWeight: 700, color: COLOR.textMuted, textTransform: "uppercase", letterSpacing: 0.4 }}>
+              Try Asking
+            </div>
+            {PRESET_QUERIES.map((query) => (
+              <button
+                key={query}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onSelectPreset(query)
+                  setShowPresets(false)
+                }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "10px 14px",
+                  border: "none",
+                  borderTop: `1px solid ${COLOR.borderSofter}`,
+                  background: "none",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: COLOR.ink,
+                  fontFamily: "inherit",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = COLOR.pageBg)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+              >
+                {query}
+              </button>
+            ))}
           </div>
         )}
       </div>

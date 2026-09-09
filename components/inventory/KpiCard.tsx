@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react"
 import { COLOR, KPI_ART_BASE, SHADOW } from "@/lib/tokens"
+import { Sparkline } from "./Sparkline"
 
 export interface KpiLegendItem {
   tone: "success" | "danger" | "warning"
@@ -21,6 +22,9 @@ export interface KpiCardProps {
   glyph: string
   legend: KpiLegendItem[]
   footer?: ReactNode
+  trendPoints: number[]
+  trendChangePct: number
+  trendGood: boolean
 }
 
 const DOT_COLOR: Record<KpiLegendItem["tone"], string> = {
@@ -38,9 +42,12 @@ function InfoIcon({ size = 17 }: { size?: number }) {
   )
 }
 
-export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyph, legend, footer }: KpiCardProps) {
+export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyph, legend, footer, trendPoints, trendChangePct, trendGood }: KpiCardProps) {
   const [titleTip, setTitleTip] = useState(false)
   const [legendTip, setLegendTip] = useState<number | null>(null)
+  const trendDown = trendChangePct <= 0
+  const trendColor = trendGood ? "rgb(10,124,74)" : "#e0392e"
+  const trendBg = trendGood ? "rgba(10,124,74,0.07)" : "rgba(224,57,46,0.06)"
 
   return (
     <div
@@ -108,7 +115,7 @@ export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyp
         {value}
         <span style={{ fontSize: 20 }}> {unit}</span>
         <span
-          aria-label="trending down"
+          aria-label={trendDown ? "trending down" : "trending up"}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -120,13 +127,22 @@ export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyp
             width: 30,
             height: 30,
             borderRadius: 10,
-            background: "rgba(224,57,46,0.06)",
+            background: trendBg,
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M12 4v16M12 20l-6.5-6.5M12 20l6.5-6.5" stroke="#e0392e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: trendDown ? "none" : "rotate(180deg)" }}>
+            <path d="M12 4v16M12 20l-6.5-6.5M12 20l6.5-6.5" stroke={trendColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
+      </div>
+
+      <div style={{ position: "relative", marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+        <Sparkline points={trendPoints} color={trendColor} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: trendColor }}>
+          {trendChangePct > 0 ? "+" : ""}
+          {trendChangePct}%
+        </span>
+        <span style={{ fontSize: 11.5, fontWeight: 500, color: COLOR.textMuted }}>vs last week</span>
       </div>
 
       <div style={{ position: "relative", marginTop: 12, height: 1, background: COLOR.divider }} />

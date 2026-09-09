@@ -19,7 +19,9 @@ import {
   VEHICLES,
   getDaysSupplyBreakdown,
   getHoldingCostBuckets,
+  getPricingInsight,
   getTimeToMarketBuckets,
+  getTrendSeries,
   isHighDemand,
   totalDaysSupply,
   totalHoldingCost,
@@ -60,6 +62,26 @@ export default function InventoryPage() {
     setPage(1)
   }
 
+  const handleSelectPreset = (query: string) => {
+    setSearch("")
+    setAdvancedFilters(emptyAdvancedFilters())
+    const presetFilters: Partial<Record<string, QuickFilter>> = {
+      "Active and aging past 30 days": "aging30",
+      "Needs a price review": "needsPriceReview",
+      "Not published": "notLiveYet",
+      "Waiting on a reply": "highDemand",
+      "Ready for Studio Instant": "noPhotos",
+    }
+    if (query === "Sourced from Marketplace") {
+      setQuickFilters(new Set())
+      setAdvancedFilters({ ...emptyAdvancedFilters(), sources: new Set(["Marketplace"]) })
+    } else {
+      const filter = presetFilters[query]
+      setQuickFilters(filter ? new Set([filter]) : new Set())
+    }
+    setPage(1)
+  }
+
   const counts = useMemo(
     () => ({
       all: vehicles.length,
@@ -83,11 +105,13 @@ export default function InventoryPage() {
       }
       if (quickFilters.has("aging60") && v.ageDays < 60) return false
       if (quickFilters.has("aging40") && v.ageDays < 40) return false
+      if (quickFilters.has("aging30") && v.ageDays < 30) return false
       if (quickFilters.has("noPhotos") && v.photoUrl !== null) return false
       if (quickFilters.has("overstocked") && v.daysSupplyStatus !== "overstocked") return false
       if (quickFilters.has("needsPromotion") && !v.needsAction.needsPromotion) return false
       if (quickFilters.has("notLiveYet") && !v.needsAction.notLiveYet) return false
       if (quickFilters.has("highDemand") && !isHighDemand(v)) return false
+      if (quickFilters.has("needsPriceReview") && !getPricingInsight(v).recommendation) return false
       if (min !== null && v.price < min) return false
       if (max !== null && v.price > max) return false
       if (advancedFilters.bodyTypes.size > 0 && !advancedFilters.bodyTypes.has(v.bodyType)) return false
@@ -130,6 +154,10 @@ export default function InventoryPage() {
   const holdingCostBuckets = useMemo(() => getHoldingCostBuckets(vehicles), [vehicles])
   const onTargetTypes = daysSupplyBreakdown.find((b) => b.status === "on_target")
   const overstockedTypes = daysSupplyBreakdown.find((b) => b.status === "overstocked")
+
+  const timeToMarketTrend = useMemo(() => getTrendSeries(totalTimeToMarket(vehicles), "down"), [vehicles])
+  const holdingCostTrend = useMemo(() => getTrendSeries(totalHoldingCost(vehicles), "down"), [vehicles])
+  const daysSupplyTrend = useMemo(() => getTrendSeries(totalDaysSupply(vehicles), "down"), [vehicles])
 
   const advancedFilterCount =
     (advancedFilters.minPrice || advancedFilters.maxPrice ? 1 : 0) +
@@ -224,6 +252,9 @@ export default function InventoryPage() {
                 label: bucket.label,
                 count: bucket.count,
               }))}
+              trendPoints={timeToMarketTrend.points}
+              trendChangePct={timeToMarketTrend.changePct}
+              trendGood={timeToMarketTrend.changePct <= 0}
             />
 
             <KpiCard
@@ -239,6 +270,9 @@ export default function InventoryPage() {
                 label: bucket.label,
                 count: bucket.count,
               }))}
+              trendPoints={holdingCostTrend.points}
+              trendChangePct={holdingCostTrend.changePct}
+              trendGood={holdingCostTrend.changePct <= 0}
             />
 
             <KpiCard
@@ -265,6 +299,9 @@ export default function InventoryPage() {
                   tooltipDetail: overstockedTypes?.bodyTypes.map((t) => `${t.name} ${t.days}d`).join(" · "),
                 },
               ]}
+              trendPoints={daysSupplyTrend.points}
+              trendChangePct={daysSupplyTrend.changePct}
+              trendGood={daysSupplyTrend.changePct <= 0}
               footer={<DaysSupplySegmentPopover vehicles={vehicles} />}
             />
           </div>
@@ -277,6 +314,7 @@ export default function InventoryPage() {
             onExport={handleExport}
             onOpenFilters={() => setFiltersOpen(true)}
             activeAdvancedCount={advancedFilterCount}
+            onSelectPreset={handleSelectPreset}
           />
 
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>

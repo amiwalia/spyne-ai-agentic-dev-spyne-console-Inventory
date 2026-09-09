@@ -793,6 +793,33 @@ export function totalHoldingCost(vehicles: Vehicle[]): number {
   return vehicles.reduce((sum, v) => sum + v.holdingCost, 0)
 }
 
+export interface TrendSeries {
+  points: number[]
+  changePct: number
+}
+
+/**
+ * A deterministic 7-point week-over-week series ending exactly at `current`
+ * (never `Math.random()`/`Date.now()` — a pure function of the current
+ * aggregate, so it's stable across renders and only moves when the metric
+ * itself does). `improving` says which direction is "good" for this metric
+ * so the series trends the right way into today's value.
+ */
+export function getTrendSeries(current: number, improving: "down" | "up"): TrendSeries {
+  const base = Math.max(1, Math.round(current))
+  const amplitude = Math.max(1, Math.round(base * 0.015))
+  const points: number[] = []
+  for (let i = 0; i < 7; i++) {
+    const noise = ((i * 37 + base) % 7) - 3
+    const daysFromToday = 6 - i
+    const trendOffset = improving === "down" ? daysFromToday * amplitude * 0.9 : -daysFromToday * amplitude * 0.9
+    points.push(Math.max(0, Math.round(base + trendOffset + noise)))
+  }
+  points[6] = base
+  const changePct = points[0] === 0 ? 0 : Math.round(((points[6] - points[0]) / points[0]) * 100)
+  return { points, changePct }
+}
+
 /** Days in stock above which a unit is considered "aged" for pricing purposes. */
 export const PRICING_AGE_THRESHOLD = 30
 
