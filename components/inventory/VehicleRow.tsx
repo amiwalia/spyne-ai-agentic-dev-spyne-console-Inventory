@@ -7,7 +7,7 @@ import { formatCurrency, formatListedAt, formatMileage } from "@/lib/format"
 import { isHighDemand } from "@/lib/mock-data"
 import { COLOR, GRADIENT } from "@/lib/tokens"
 
-const GRID_COLUMNS = "36px 3.2fr 1fr 1fr 1fr 150px"
+const GRID_COLUMNS = "36px 2.6fr 1fr 1fr 1fr 150px"
 const CAPTION = "rgb(153,170,170)"
 
 function holdingSeverityPct(cost: number): number {
@@ -111,7 +111,7 @@ export function VehicleRow({ vehicle, selected, onToggle, onTakeAction }: Vehicl
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0, paddingRight: 32 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0, paddingRight: 12 }}>
         <div style={{ position: "relative", flexShrink: 0, cursor: "pointer" }}>
           <div style={{ width: 76, height: 56, borderRadius: 10, background: "rgb(244,244,248)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {vehicle.photoUrl ? (

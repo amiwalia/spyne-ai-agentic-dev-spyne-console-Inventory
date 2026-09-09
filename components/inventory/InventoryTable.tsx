@@ -8,7 +8,7 @@ import { COLOR, SHADOW } from "@/lib/tokens"
 export type SortKey = "price" | "age" | "holdingCost"
 export type SortDirection = "asc" | "desc"
 
-const GRID_COLUMNS = "36px 3.2fr 1fr 1fr 1fr 150px"
+const GRID_COLUMNS = "36px 2.6fr 1fr 1fr 1fr 150px"
 const COLUMN_SORT_KEYS: Record<string, SortKey> = { Price: "price", Age: "age", "Hold. Cost": "holdingCost" }
 const COLUMNS = ["Vehicle", "Price", "Age", "Hold. Cost", "Action"]
 
