@@ -7,7 +7,7 @@ import { InventoryHeader } from "@/components/inventory/InventoryHeader"
 import { VehicleTabs, type TabValue } from "@/components/inventory/VehicleTabs"
 import { FilterBar, type QuickFilter } from "@/components/inventory/FilterBar"
 import { KpiCard } from "@/components/inventory/KpiCard"
-import { DaysSupplySegmentPopover } from "@/components/inventory/DaysSupplySegmentPopover"
+import { DaysSupplySegmentLink } from "@/components/inventory/DaysSupplySegmentLink"
 import { InventoryTable, type SortDirection, type SortKey } from "@/components/inventory/InventoryTable"
 import { Pagination } from "@/components/inventory/Pagination"
 import { NeedsActionDrawer } from "@/components/inventory/NeedsActionDrawer"
@@ -302,7 +302,7 @@ export default function InventoryPage() {
               trendPoints={daysSupplyTrend.points}
               trendChangePct={daysSupplyTrend.changePct}
               trendGood={daysSupplyTrend.changePct <= 0}
-              trendExtra={<DaysSupplySegmentPopover vehicles={vehicles} />}
+              trendExtra={<DaysSupplySegmentLink />}
             />
           </div>
 
