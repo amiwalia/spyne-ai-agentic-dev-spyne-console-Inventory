@@ -41,7 +41,10 @@ export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) 
             }}
           >
             <div
-              onDoubleClick={() => toggle(seg.bodyType)}
+              onClick={() => toggle(seg.bodyType)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && toggle(seg.bodyType)}
               style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", cursor: "pointer", userSelect: "none" }}
             >
               <ChevronDown
@@ -52,7 +55,7 @@ export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLOR.ink }}>{seg.bodyType}</p>
                 <p style={{ margin: "3px 0 0", fontSize: 12.5, color: COLOR.textMuted }}>
-                  {seg.vehicleCount} vehicle{seg.vehicleCount === 1 ? "" : "s"} · double-click to view vehicle details
+                  {seg.vehicleCount} vehicle{seg.vehicleCount === 1 ? "" : "s"} · click to view vehicle details
                 </p>
               </div>
               <span style={{ fontSize: 17, fontWeight: 700, color: COLOR.ink, flexShrink: 0 }}>{seg.avgDaysSupply}d</span>

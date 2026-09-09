@@ -24,7 +24,7 @@ export default function SegmentsPage() {
 
           <div style={{ fontSize: 22, fontWeight: 700, color: "rgb(8,8,8)" }}>Days Supply by Segment</div>
           <p style={{ fontSize: 14, color: "rgb(111,106,128)", marginTop: 2 }}>
-            {segments.length} body-type segments across {VEHICLES.length} vehicles — double-click a segment to see its vehicles
+            {segments.length} body-type segments across {VEHICLES.length} vehicles — click a segment to see its vehicles
           </p>
 
           <div style={{ marginTop: 20, maxWidth: 900 }}>
