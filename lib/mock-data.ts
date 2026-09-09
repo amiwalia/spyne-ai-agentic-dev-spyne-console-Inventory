@@ -692,7 +692,12 @@ export function getSegmentBreakdown(vehicles: Vehicle[]): SegmentDaysSupply[] {
   const STATUS_RANK: Record<string, number> = { overstocked: 0, understocked: 1, on_target: 2 }
 
   const segments: SegmentDaysSupply[] = Array.from(byType.entries()).map(([bodyType, entry]) => {
-    const [dominantStatus] = Object.entries(entry.status).sort((a, b) => b[1] - a[1])[0]
+    // A count tie defaults to the more actionable status (overstocked/understocked)
+    // rather than on_target, so a segment split evenly doesn't read as "all clear".
+    const [dominantStatus] = Object.entries(entry.status).sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1]
+      return STATUS_RANK[a[0]] - STATUS_RANK[b[0]]
+    })[0]
     return {
       bodyType,
       vehicleCount: entry.count,
