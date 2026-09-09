@@ -714,13 +714,13 @@ export function getSegmentBreakdown(vehicles: Vehicle[]): SegmentDaysSupply[] {
 }
 
 export function getTimeToMarketBuckets(vehicles: Vehicle[]): TimeToMarketBucket[] {
-  const under15 = vehicles.filter((v) => v.ageDays < 15).length
-  const between15And25 = vehicles.filter((v) => v.ageDays >= 15 && v.ageDays <= 25).length
-  const over25 = vehicles.filter((v) => v.ageDays > 25).length
+  const under3 = vehicles.filter((v) => v.ageDays < 3).length
+  const between3And6 = vehicles.filter((v) => v.ageDays >= 3 && v.ageDays <= 6).length
+  const over6 = vehicles.filter((v) => v.ageDays > 6).length
   return [
-    { label: "< 15 days", count: under15 },
-    { label: "15–25 days", count: between15And25 },
-    { label: "26+ days", count: over25 },
+    { label: "< 3 days", count: under3 },
+    { label: "3–6 days", count: between3And6 },
+    { label: "6+ days", count: over6 },
   ]
 }
 
