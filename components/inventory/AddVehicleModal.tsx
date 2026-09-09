@@ -73,17 +73,15 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
   }
 
   return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,16,35,0.4)", zIndex: 40 }} />
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(20,16,35,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+    >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%,-50%)",
-          zIndex: 41,
           width: 480,
-          maxWidth: "90vw",
+          maxWidth: "100%",
           maxHeight: "85vh",
           overflowY: "auto",
           background: "#fff",
@@ -182,6 +180,6 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
           </button>
         </div>
       </div>
-    </>
+    </div>
   )
 }

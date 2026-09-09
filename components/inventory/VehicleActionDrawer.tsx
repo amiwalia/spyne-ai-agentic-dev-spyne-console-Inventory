@@ -10,6 +10,7 @@ import { VehicleDetailsTab } from "./vdp/VehicleDetailsTab"
 import { MerchandiseStatusTab } from "./vdp/MerchandiseStatusTab"
 import { PublishStatusTab } from "./vdp/PublishStatusTab"
 import { PricingTab } from "./vdp/PricingTab"
+import { PhotoScoreModal } from "./PhotoScoreModal"
 
 type ActionKey = "noPhotos" | "needsPromotion" | "notLiveYet"
 
@@ -43,6 +44,7 @@ const DETAIL_ROWS = (v: Vehicle) => [
 
 export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice }: VehicleActionDrawerProps) {
   const [tab, setTab] = useState<Tab>("Overview")
+  const [photoScoreOpen, setPhotoScoreOpen] = useState(false)
 
   if (!vehicle) return null
 
@@ -56,6 +58,7 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
   }
 
   return (
+    <>
     <div
       style={{
         position: "fixed",
@@ -238,6 +241,7 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
                       <button
                         key={row.key}
                         type="button"
+                        onClick={() => row.key === "noPhotos" && setPhotoScoreOpen(true)}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -248,7 +252,7 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
                           border: "none",
                           borderTop: i > 0 ? `1px solid ${COLOR.borderSofter}` : "none",
                           background: "none",
-                          cursor: "pointer",
+                          cursor: row.key === "noPhotos" ? "pointer" : "default",
                           textAlign: "left",
                         }}
                       >
@@ -291,6 +295,18 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
         }
       `}</style>
     </div>
+
+    {photoScoreOpen && (
+      <PhotoScoreModal
+        vehicle={vehicle}
+        onClose={() => setPhotoScoreOpen(false)}
+        onFix={() => {
+          onResolve(vehicle.id, "noPhotos")
+          setPhotoScoreOpen(false)
+        }}
+      />
+    )}
+    </>
   )
 }
 
