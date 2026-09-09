@@ -302,7 +302,7 @@ export default function InventoryPage() {
               trendPoints={daysSupplyTrend.points}
               trendChangePct={daysSupplyTrend.changePct}
               trendGood={daysSupplyTrend.changePct <= 0}
-              footer={<DaysSupplySegmentPopover vehicles={vehicles} />}
+              trendExtra={<DaysSupplySegmentPopover vehicles={vehicles} />}
             />
           </div>
 

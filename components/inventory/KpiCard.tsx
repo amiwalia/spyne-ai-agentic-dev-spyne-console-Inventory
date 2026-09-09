@@ -21,7 +21,7 @@ export interface KpiCardProps {
   wash: string
   glyph: string
   legend: KpiLegendItem[]
-  footer?: ReactNode
+  trendExtra?: ReactNode
   trendPoints: number[]
   trendChangePct: number
   trendGood: boolean
@@ -42,7 +42,7 @@ function InfoIcon({ size = 17 }: { size?: number }) {
   )
 }
 
-export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyph, legend, footer, trendPoints, trendChangePct, trendGood }: KpiCardProps) {
+export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyph, legend, trendExtra, trendPoints, trendChangePct, trendGood }: KpiCardProps) {
   const [titleTip, setTitleTip] = useState(false)
   const [legendTip, setLegendTip] = useState<number | null>(null)
   const trendDown = trendChangePct <= 0
@@ -143,6 +143,7 @@ export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyp
           {trendChangePct}%
         </span>
         <span style={{ fontSize: 11.5, fontWeight: 500, color: COLOR.textMuted }}>vs last week</span>
+        {trendExtra && <span style={{ marginLeft: "auto" }}>{trendExtra}</span>}
       </div>
 
       <div style={{ position: "relative", marginTop: 12, height: 1, background: COLOR.divider }} />
@@ -188,8 +189,6 @@ export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyp
           </span>
         ))}
       </div>
-
-      {footer && <div style={{ position: "relative", marginTop: 12 }}>{footer}</div>}
     </div>
   )
 }
