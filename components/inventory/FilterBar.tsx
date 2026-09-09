@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Download, Search, SlidersHorizontal } from "lucide-react"
+import Link from "next/link"
+import { ArrowRight, Download, Search, SlidersHorizontal } from "lucide-react"
 import { COLOR } from "@/lib/tokens"
 
 export type QuickFilter = "aging60" | "aging40" | "aging30" | "noPhotos" | "overstocked" | "needsPromotion" | "notLiveYet" | "highDemand" | "needsPriceReview"
@@ -158,26 +159,28 @@ export function FilterBar({ search, onSearchChange, active, onToggle, onExport, 
         )
       })}
 
-      <select
-        style={{
-          height: 38,
-          padding: "0 10px",
-          borderRadius: 10,
-          border: `1px solid ${COLOR.borderSoft}`,
-          background: "#fff",
-          fontSize: 13,
-          fontWeight: 600,
-          color: COLOR.textSecondary,
-        }}
-        defaultValue=""
-      >
-        <option value="">Source</option>
-        <option value="IMS">IMS</option>
-        <option value="Website">Website</option>
-        <option value="Marketplace">Marketplace</option>
-      </select>
-
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+        <Link
+          href="/sold-inventory"
+          style={{
+            height: 38,
+            boxSizing: "border-box",
+            padding: "0 14px",
+            borderRadius: 10,
+            border: `1px solid ${COLOR.borderButton}`,
+            background: "#fff",
+            fontWeight: 700,
+            fontSize: 13,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            color: COLOR.primary,
+            textDecoration: "none",
+          }}
+        >
+          View Sold Inventory
+          <ArrowRight size={15} />
+        </Link>
         <button
           type="button"
           onClick={onExport}

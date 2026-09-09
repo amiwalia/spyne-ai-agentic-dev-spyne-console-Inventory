@@ -1,7 +1,5 @@
 "use client"
 
-import Link from "next/link"
-import { ArrowRight } from "lucide-react"
 import type { Condition } from "@/lib/types"
 import { COLOR, SHELL } from "@/lib/tokens"
 
@@ -77,30 +75,6 @@ export function VehicleTabs({ active, onChange, counts }: VehicleTabsProps) {
           </button>
         )
       })}
-
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", paddingBottom: 12 }}>
-        <Link
-          href="/sold-inventory"
-          style={{
-            height: 38,
-            boxSizing: "border-box",
-            padding: "0 14px",
-            borderRadius: 10,
-            border: `1px solid ${COLOR.borderButton}`,
-            background: "#fff",
-            fontWeight: 700,
-            fontSize: 13,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            color: COLOR.primary,
-            textDecoration: "none",
-          }}
-        >
-          View Sold Inventory
-          <ArrowRight size={15} />
-        </Link>
-      </div>
     </div>
   )
 }
