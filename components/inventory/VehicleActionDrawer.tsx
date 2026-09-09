@@ -53,8 +53,12 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
   const openCount = merchandisedDone ? 0 : 1
   const demand = getDemandSignal(vehicle)
 
-  const handleFixNow = () => {
-    pendingChecklist.forEach((row) => onResolve(vehicle.id, row.key))
+  const handleFixSingle = (key: ActionKey) => {
+    if (key === "noPhotos") {
+      setPhotoScoreOpen(true)
+      return
+    }
+    onResolve(vehicle.id, key)
   }
 
   return (
@@ -221,7 +225,7 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLOR.ink, letterSpacing: -0.4 }}>Vehicle process</h2>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLOR.ink, letterSpacing: -0.4 }}>Vehicle Journey</h2>
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 22, padding: "0 8px", borderRadius: 7, background: "rgb(255,244,229)", color: "rgb(178,94,0)", fontSize: 12, fontWeight: 700 }}>
                 {openCount} open
               </span>
@@ -238,31 +242,40 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
                 {!merchandisedDone && (
                   <div style={{ marginTop: 11, border: `1px solid ${COLOR.borderSoft}`, borderRadius: 12, padding: "0 13px" }}>
                     {pendingChecklist.map((row, i) => (
-                      <button
+                      <div
                         key={row.key}
-                        type="button"
-                        onClick={() => row.key === "noPhotos" && setPhotoScoreOpen(true)}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
-                          width: "100%",
-                          boxSizing: "border-box",
                           padding: "11px 0",
-                          border: "none",
                           borderTop: i > 0 ? `1px solid ${COLOR.borderSofter}` : "none",
-                          background: "none",
-                          cursor: row.key === "noPhotos" ? "pointer" : "default",
-                          textAlign: "left",
                         }}
                       >
                         <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: "rgba(40,35,70,0.6)", whiteSpace: "nowrap" }}>{row.label}</span>
-                        <span style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 700, color: "rgb(192,38,26)" }}>{row.value}</span>
-                      </button>
+                        <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "rgb(192,38,26)" }}>{row.value}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleFixSingle(row.key)}
+                          style={{
+                            flexShrink: 0,
+                            height: 28,
+                            padding: "0 12px",
+                            borderRadius: 8,
+                            border: "none",
+                            background: GRADIENT.addVehicle,
+                            color: "#fff",
+                            fontFamily: "inherit",
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Fix now
+                        </button>
+                      </div>
                     ))}
-                    <button type="button" onClick={handleFixNow} className="vdp-fix-btn" style={{ marginTop: 12, marginBottom: 12, width: "100%" }}>
-                      Fix now
-                    </button>
                   </div>
                 )}
               </ProcessStep>
@@ -279,21 +292,6 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .vdp-fix-btn {
-          height: 44px;
-          border-radius: 12px;
-          border: 1px solid transparent;
-          background: ${GRADIENT.addVehicle};
-          color: #fff;
-          cursor: pointer;
-          font-family: inherit;
-          font-size: 13.5px;
-          font-weight: 700;
-          box-shadow: rgba(70, 0, 242, 0.21) 0px 8px 18px -8px;
-        }
-      `}</style>
     </div>
 
     {photoScoreOpen && (
