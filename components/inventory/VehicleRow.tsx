@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { ArrowRight, Download, ExternalLink, Flame, ImageOff } from "lucide-react"
 import type { Vehicle } from "@/lib/types"
 import { formatCurrency, formatListedAt, formatMileage } from "@/lib/format"
@@ -13,10 +14,13 @@ function holdingSeverityPct(cost: number): number {
   return Math.min(100, Math.max(10, Math.round((cost / 4000) * 100)))
 }
 
-function HighDemandBadge() {
+function HighDemandBadge({ salesInquiries }: { salesInquiries: number }) {
+  const [hover, setHover] = useState(false)
+
   return (
     <span
-      title="High Demand"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
         position: "absolute",
         top: -6,
@@ -30,9 +34,35 @@ function HighDemandBadge() {
         background: "rgb(178,94,0)",
         border: "2px solid #fff",
         boxShadow: "0 1px 3px rgba(20,16,40,0.25)",
+        cursor: "default",
+        zIndex: 1,
       }}
     >
       <Flame size={11} color="#fff" />
+      {hover && (
+        <span
+          role="tooltip"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 8px)",
+            left: 0,
+            zIndex: 20,
+            width: 188,
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: "rgb(21,19,28)",
+            color: "#fff",
+            fontSize: 11.5,
+            fontWeight: 500,
+            lineHeight: 1.4,
+            whiteSpace: "normal",
+            boxShadow: "0 8px 20px -6px rgba(20,16,40,0.4)",
+          }}
+        >
+          <span style={{ display: "block", fontWeight: 700, marginBottom: 2 }}>High Demand</span>
+          {salesInquiries} sales {salesInquiries === 1 ? "inquiry" : "inquiries"} logged in the last 14 days.
+        </span>
+      )}
     </span>
   )
 }
@@ -102,7 +132,7 @@ export function VehicleRow({ vehicle, selected, onToggle, onTakeAction }: Vehicl
               <ExternalLink size={10} color="#fff" />
             </span>
           </div>
-          {highDemand && <HighDemandBadge />}
+          {highDemand && <HighDemandBadge salesInquiries={vehicle.salesInquiries} />}
         </div>
         <div style={{ minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: COLOR.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
