@@ -709,24 +709,24 @@ export function getSegmentBreakdown(vehicles: Vehicle[]): SegmentDaysSupply[] {
 }
 
 export function getTimeToMarketBuckets(vehicles: Vehicle[]): TimeToMarketBucket[] {
-  const under3 = vehicles.filter((v) => v.ageDays < 3).length
-  const between3And6 = vehicles.filter((v) => v.ageDays >= 3 && v.ageDays <= 6).length
-  const over6 = vehicles.filter((v) => v.ageDays > 6).length
+  const under15 = vehicles.filter((v) => v.ageDays < 15).length
+  const between15And25 = vehicles.filter((v) => v.ageDays >= 15 && v.ageDays <= 25).length
+  const over25 = vehicles.filter((v) => v.ageDays > 25).length
   return [
-    { label: "<3 days", count: under3 },
-    { label: "3-6 days", count: between3And6 },
-    { label: "6+ days", count: over6 },
+    { label: "< 15 days", count: under15 },
+    { label: "15–25 days", count: between15And25 },
+    { label: "26+ days", count: over25 },
   ]
 }
 
 export function getHoldingCostBuckets(vehicles: Vehicle[]): HoldingCostBucket[] {
-  const under100 = vehicles.filter((v) => v.holdingCost < 100).length
-  const between100And500 = vehicles.filter((v) => v.holdingCost >= 100 && v.holdingCost <= 500).length
-  const over500 = vehicles.filter((v) => v.holdingCost > 500).length
+  const under500 = vehicles.filter((v) => v.holdingCost < 500).length
+  const between500And1000 = vehicles.filter((v) => v.holdingCost >= 500 && v.holdingCost <= 1000).length
+  const over1000 = vehicles.filter((v) => v.holdingCost > 1000).length
   return [
-    { label: "< $100", count: under100 },
-    { label: "$100 – $500", count: between100And500 },
-    { label: "> $500", count: over500 },
+    { label: "< $500", count: under500 },
+    { label: "$500 – $1,000", count: between500And1000 },
+    { label: "> $1,000", count: over1000 },
   ]
 }
 
