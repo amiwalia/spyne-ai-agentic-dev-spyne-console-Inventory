@@ -1,8 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import type { Vehicle } from "@/lib/types"
 import { formatListedAt } from "@/lib/format"
 import { COLOR } from "@/lib/tokens"
+
+const MAX_VISIBLE_CHANNELS = 3
 
 interface Channel {
   name: string
@@ -80,6 +83,10 @@ export function PublishStatusTab({ vehicle, onFixListing }: { vehicle: Vehicle; 
 }
 
 function ChannelGroup({ title, live, channels }: { title: string; live: boolean; channels: Channel[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? channels : channels.slice(0, MAX_VISIBLE_CHANNELS)
+  const remaining = channels.length - visible.length
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -103,7 +110,7 @@ function ChannelGroup({ title, live, channels }: { title: string; live: boolean;
         </span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "14px 18px", marginTop: 14 }}>
-        {channels.map((ch) => (
+        {visible.map((ch) => (
           <span key={ch.name} style={{ display: "inline-flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <span
               style={{
@@ -138,6 +145,15 @@ function ChannelGroup({ title, live, channels }: { title: string; live: boolean;
           </span>
         ))}
       </div>
+      {remaining > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          style={{ marginTop: 12, border: "none", background: "none", cursor: "pointer", padding: 0, fontSize: 12.5, fontWeight: 700, color: COLOR.primary }}
+        >
+          +{remaining} more
+        </button>
+      )}
     </div>
   )
 }

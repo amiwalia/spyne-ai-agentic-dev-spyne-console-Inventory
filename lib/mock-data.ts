@@ -2,6 +2,7 @@ import type {
   DaysSupplyBreakdownEntry,
   DemandSignal,
   HoldingCostBucket,
+  PricingInsight,
   SegmentDaysSupply,
   SoldVehicle,
   TimeToMarketBucket,
@@ -790,4 +791,55 @@ export function totalTimeToMarket(vehicles: Vehicle[]): number {
 
 export function totalHoldingCost(vehicles: Vehicle[]): number {
   return vehicles.reduce((sum, v) => sum + v.holdingCost, 0)
+}
+
+/** Days in stock above which a unit is considered "aged" for pricing purposes. */
+export const PRICING_AGE_THRESHOLD = 30
+
+function seedFrom(text: string): number {
+  let sum = 0
+  for (let i = 0; i < text.length; i++) sum += text.charCodeAt(i)
+  return sum
+}
+
+const round50 = (n: number) => Math.round(n / 50) * 50
+
+/**
+ * Competitive-pricing snapshot at 30/50/100-mile radii, deterministic from the
+ * vehicle's own stock number (never `Math.random()`). Aged units (30d+ in
+ * stock) are modeled as sitting in a market where competitors undercut them
+ * — mirroring the real dynamic this feature is meant to catch — and surface
+ * a recommendation once the widest radius shows a meaningfully lower average.
+ */
+export function getPricingInsight(v: Vehicle): PricingInsight {
+  const seed = seedFrom(v.stockNumber)
+  const aged = v.ageDays >= PRICING_AGE_THRESHOLD
+  const baseDriftPct = aged ? -(0.02 + (seed % 6) * 0.01) : ((seed % 5) - 2) * 0.006
+
+  const radii = [30, 50, 100].map((radiusMiles, i) => {
+    const spread = 1 + i * 0.6
+    const avgPrice = round50(v.price * (1 + baseDriftPct * spread))
+    const lowestPrice = round50(avgPrice * (0.93 - i * 0.01))
+    const competitorCount = 2 + i * 3 + (seed % 3)
+    return { radiusMiles, competitorCount, avgPrice, lowestPrice }
+  })
+
+  const widest = radii[radii.length - 1]
+  const shouldRecommend = aged && widest.avgPrice < v.price * 0.98
+  const recommendation = shouldRecommend
+    ? (() => {
+        const suggestedPrice = round50(widest.avgPrice + 100)
+        const deltaAmount = v.price - suggestedPrice
+        const deltaPct = Math.round((deltaAmount / v.price) * 100)
+        const marketGapPct = Math.round(((v.price - widest.avgPrice) / v.price) * 100)
+        return {
+          suggestedPrice,
+          deltaAmount,
+          deltaPct,
+          reason: `${v.ageDays}d in stock and priced ${marketGapPct}% above the ${widest.radiusMiles}-mile market average.`,
+        }
+      })()
+    : null
+
+  return { radii, recommendation }
 }

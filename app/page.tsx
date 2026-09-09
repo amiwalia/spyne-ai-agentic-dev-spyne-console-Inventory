@@ -166,12 +166,11 @@ export default function InventoryPage() {
     flashToast(labels[key])
   }
 
-  const handleAdjustPrice = (vehicleId: string) => {
+  const handleApplyPrice = (vehicleId: string, newPrice: number) => {
     setVehicles((prev) =>
-      prev.map((v) => (v.id === vehicleId ? { ...v, price: Math.round(v.price * 0.97), daysSupplyStatus: "on_target" as const } : v))
+      prev.map((v) => (v.id === vehicleId ? { ...v, price: newPrice, daysSupplyStatus: v.daysSupplyStatus === "overstocked" ? ("on_target" as const) : v.daysSupplyStatus } : v))
     )
-    flashToast("Price adjusted to market")
-    setActionVehicleId(null)
+    flashToast(`Price updated to ${formatCurrency(newPrice)}`)
   }
 
   const handleAddVehicle = (vehicle: Vehicle) => {
@@ -308,7 +307,7 @@ export default function InventoryPage() {
         vehicle={actionVehicle}
         onClose={() => setActionVehicleId(null)}
         onResolve={handleResolveAction}
-        onAdjustPrice={handleAdjustPrice}
+        onApplyPrice={handleApplyPrice}
       />
 
       <AddVehicleModal open={addVehicleOpen} onClose={() => setAddVehicleOpen(false)} onAdd={handleAddVehicle} />

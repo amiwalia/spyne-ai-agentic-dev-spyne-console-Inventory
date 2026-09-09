@@ -64,7 +64,6 @@ export function DaysSupplySegmentPopover({ vehicles }: { vehicles: Vehicle[] }) 
           >
             <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${COLOR.borderSofter}` }}>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: COLOR.ink }}>Days Supply by Segment</span>
-              <p style={{ margin: "2px 0 0", fontSize: 11.5, color: COLOR.textMuted }}>Overstocked segments first — clear these before buying more.</p>
             </div>
             <div style={{ maxHeight: 320, overflowY: "auto" }}>
               {segments.map((seg) => (

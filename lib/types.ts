@@ -102,6 +102,25 @@ export interface DemandSignal {
   }
 }
 
+export interface CompetitorRadiusInsight {
+  radiusMiles: number
+  competitorCount: number
+  avgPrice: number
+  lowestPrice: number
+}
+
+export interface PricingRecommendation {
+  suggestedPrice: number
+  deltaAmount: number
+  deltaPct: number
+  reason: string
+}
+
+export interface PricingInsight {
+  radii: CompetitorRadiusInsight[]
+  recommendation: PricingRecommendation | null
+}
+
 export interface SoldVehicle {
   id: string
   stockNumber: string
