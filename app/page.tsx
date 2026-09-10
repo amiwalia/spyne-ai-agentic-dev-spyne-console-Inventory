@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Sidebar } from "@/components/inventory/Sidebar"
 import { Topbar } from "@/components/inventory/Topbar"
 import { InventoryHeader } from "@/components/inventory/InventoryHeader"
@@ -16,7 +16,6 @@ import { AddVehicleModal } from "@/components/inventory/AddVehicleModal"
 import { FiltersPanel, emptyAdvancedFilters, type AdvancedFilters } from "@/components/inventory/FiltersPanel"
 import { Toast } from "@/components/inventory/Toast"
 import {
-  VEHICLES,
   getDaysSupplyBreakdown,
   getHoldingCostBuckets,
   getPricingInsight,
@@ -33,7 +32,10 @@ import { formatCurrency } from "@/lib/format"
 const PAGE_SIZE = 8
 
 export default function InventoryPage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>(VEHICLES)
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [loadState, setLoadState] = useState<{ status: "loading" | "ready" | "error"; error?: string; meta?: { fetchedCount: number; truncated: boolean } }>({
+    status: "loading",
+  })
   const [tab, setTab] = useState<TabValue>("all")
   const [search, setSearch] = useState("")
   const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set())
@@ -47,6 +49,32 @@ export default function InventoryPage() {
   const [addVehicleOpen, setAddVehicleOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadState((prev) => ({ status: "loading", meta: prev.meta }))
+    fetch(`/api/inventory?isSold=false&holdingCostPerDay=${holdingCostPerDay}`)
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as { vehicles: Vehicle[]; meta: { fetchedCount: number; truncated: boolean } }
+      })
+      .then((body) => {
+        if (cancelled) return
+        setVehicles(body.vehicles)
+        setLoadState({ status: "ready", meta: body.meta })
+      })
+      .catch((err: Error) => {
+        if (cancelled) return
+        setLoadState({ status: "error", error: err.message })
+      })
+    return () => {
+      cancelled = true
+    }
+    // Re-fetches when the dealer's holding-cost rate changes, since that rate
+    // is baked into each vehicle's holdingCost server-side.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdingCostPerDay])
 
   const flashToast = (message: string) => {
     setToast(message)
@@ -317,18 +345,38 @@ export default function InventoryPage() {
             onSelectPreset={handleSelectPreset}
           />
 
+          {loadState.status === "error" && (
+            <div style={{ marginTop: 16, padding: "12px 16px", borderRadius: 10, background: "rgb(253,236,234)", color: "rgb(192,38,26)", fontSize: 13, fontWeight: 600 }}>
+              Couldn&apos;t load live inventory from the UAT API: {loadState.error}
+            </div>
+          )}
+
+          {loadState.status === "ready" && loadState.meta?.truncated && (
+            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 10, background: "rgb(255,244,229)", color: "rgb(178,94,0)", fontSize: 12.5, fontWeight: 600 }}>
+              Showing the {loadState.meta.fetchedCount} most recently created active vehicles — this rooftop has more than that, and there&apos;s no real server-side pagination wired up yet.
+            </div>
+          )}
+
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-            <InventoryTable
-              vehicles={paginated}
-              selected={selected}
-              onToggle={toggleSelected}
-              onToggleAll={toggleAll}
-              onTakeAction={setActionVehicleId}
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-            <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage} />
+            {loadState.status === "loading" && vehicles.length === 0 ? (
+              <div style={{ padding: "60px 0", textAlign: "center", color: "rgb(111,106,128)", fontSize: 14, fontWeight: 500 }}>
+                Loading live inventory from UAT…
+              </div>
+            ) : (
+              <>
+                <InventoryTable
+                  vehicles={paginated}
+                  selected={selected}
+                  onToggle={toggleSelected}
+                  onToggleAll={toggleAll}
+                  onTakeAction={setActionVehicleId}
+                  sortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+                <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage} />
+              </>
+            )}
           </div>
         </main>
       </div>
