@@ -16,15 +16,20 @@ interface Row {
 interface NeedsActionDrawerProps {
   vehicles: Vehicle[]
   onSelectFilter: (filter: QuickFilter) => void
+  /** Real, whole-account count from /inventory/v2/score-attributes-count —
+   * used for the "No Photos" row instead of counting the (possibly
+   * truncated) fetched vehicle sample, when available. The other four rows
+   * still count the local sample; this API only covers media attributes. */
+  realNoPhotosCount?: number
 }
 
 const RED = "rgb(211,0,0)"
 
-export function NeedsActionDrawer({ vehicles, onSelectFilter }: NeedsActionDrawerProps) {
+export function NeedsActionDrawer({ vehicles, onSelectFilter, realNoPhotosCount }: NeedsActionDrawerProps) {
   const [open, setOpen] = useState(false)
 
   const rows: Row[] = [
-    { label: "No Photos", count: vehicles.filter((v) => v.needsAction.noPhotos).length, icon: ImageOff, filter: "noPhotos" },
+    { label: "No Photos", count: realNoPhotosCount ?? vehicles.filter((v) => v.needsAction.noPhotos).length, icon: ImageOff, filter: "noPhotos" },
     { label: "High Demand Vehicles", count: vehicles.filter(isHighDemand).length, icon: Flame, filter: "highDemand" },
     { label: "Not Live Yet", count: vehicles.filter((v) => v.needsAction.notLiveYet).length, icon: Radio, filter: "notLiveYet" },
     { label: "Overstocked", count: vehicles.filter((v) => v.daysSupplyStatus === "overstocked").length, icon: TrendingDown, filter: "overstocked" },

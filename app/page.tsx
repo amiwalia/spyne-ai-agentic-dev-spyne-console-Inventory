@@ -27,7 +27,7 @@ import {
   totalTimeToMarket,
 } from "@/lib/mock-data"
 import type { Vehicle } from "@/lib/types"
-import type { UatFilterOptions, UatTimeToMarket } from "@/lib/uat-adapter"
+import type { UatFilterOptions, UatScoreAttributesCount, UatTimeToMarket } from "@/lib/uat-adapter"
 import { formatCurrency } from "@/lib/format"
 
 const PAGE_SIZE = 8
@@ -39,6 +39,7 @@ export default function InventoryPage() {
   })
   const [realFilterOptions, setRealFilterOptions] = useState<UatFilterOptions | undefined>(undefined)
   const [realTtm, setRealTtm] = useState<UatTimeToMarket | undefined>(undefined)
+  const [realScoreAttrs, setRealScoreAttrs] = useState<UatScoreAttributesCount | undefined>(undefined)
   const [tab, setTab] = useState<TabValue>("all")
   const [search, setSearch] = useState("")
   const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set())
@@ -113,6 +114,26 @@ export default function InventoryPage() {
       .catch(() => {
         // Non-fatal — the Time to Market card falls back to bucketing the
         // fetched vehicle sample's current ageDays when realTtm is undefined.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/inventory/score-attributes-count?isSold=false")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as UatScoreAttributesCount
+      })
+      .then((counts) => {
+        if (!cancelled) setRealScoreAttrs(counts)
+      })
+      .catch(() => {
+        // Non-fatal — the Needs Action drawer's "No Photos" row falls back
+        // to counting the fetched vehicle sample when this is undefined.
       })
     return () => {
       cancelled = true
@@ -436,6 +457,7 @@ export default function InventoryPage() {
 
       <NeedsActionDrawer
         vehicles={vehicles}
+        realNoPhotosCount={realScoreAttrs?.noPhotosCount}
         onSelectFilter={(filter) => {
           setQuickFilters(new Set([filter]))
           setPage(1)

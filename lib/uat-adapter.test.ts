@@ -3,9 +3,11 @@ import {
   mapUatDocumentToVehicle,
   mapUatFacetsToFilterOptions,
   mapUatPhotoScore,
+  mapUatScoreAttributesCount,
   mapUatTimeToMarket,
   type UatDocument,
   type UatFiltersResponse,
+  type UatScoreAttributesCountResponse,
   type UatTimeToMarketResponse,
   type UatVehicleDetailResponse,
 } from "./uat-adapter"
@@ -265,5 +267,46 @@ describe("mapUatPhotoScore", () => {
       makeDetailResponse({ actionItems: { SOME_NEW_ISSUE_TYPE: { actual: 1, target: 3 } }, output: { score: 6, grade: "POOR" } }),
     )
     expect(result?.issues).toEqual([{ key: "SOME_NEW_ISSUE_TYPE", label: "Some New Issue Type", actual: 1, target: 3 }])
+  })
+})
+
+function makeScoreAttrsResponse(overrides: Partial<UatScoreAttributesCountResponse> = {}): UatScoreAttributesCountResponse {
+  return {
+    error: false,
+    message: "ok",
+    vehicleCount: { actionableCount: 1293 },
+    attributesCount: [
+      { attribute: "NO_PHOTOS", count: 1264 },
+      { attribute: "CGI_PRESENT", count: 108 },
+      { attribute: "INCOMPLETE_MEDIA", count: 100 },
+    ],
+    ...overrides,
+  }
+}
+
+describe("mapUatScoreAttributesCount", () => {
+  it("pulls noPhotosCount specifically from the NO_PHOTOS attribute", () => {
+    const result = mapUatScoreAttributesCount(makeScoreAttrsResponse())
+    expect(result.noPhotosCount).toBe(1264)
+  })
+
+  it("carries actionableCount through from vehicleCount", () => {
+    const result = mapUatScoreAttributesCount(makeScoreAttrsResponse())
+    expect(result.actionableCount).toBe(1293)
+  })
+
+  it("keeps every attribute in byAttribute, not just NO_PHOTOS", () => {
+    const result = mapUatScoreAttributesCount(makeScoreAttrsResponse())
+    expect(result.byAttribute).toEqual({ NO_PHOTOS: 1264, CGI_PRESENT: 108, INCOMPLETE_MEDIA: 100 })
+  })
+
+  it("defaults noPhotosCount to 0 when NO_PHOTOS is absent from the response", () => {
+    const result = mapUatScoreAttributesCount(makeScoreAttrsResponse({ attributesCount: [{ attribute: "CGI_PRESENT", count: 5 }] }))
+    expect(result.noPhotosCount).toBe(0)
+  })
+
+  it("defaults actionableCount to 0 when vehicleCount is missing", () => {
+    const result = mapUatScoreAttributesCount(makeScoreAttrsResponse({ vehicleCount: undefined }))
+    expect(result.actionableCount).toBe(0)
   })
 })

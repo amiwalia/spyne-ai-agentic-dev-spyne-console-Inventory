@@ -272,3 +272,38 @@ export function mapUatPhotoScore(res: UatVehicleDetailResponse): UatPhotoScore |
 
   return { score: vs.output.score, grade: vs.output.grade, issues }
 }
+
+export interface UatScoreAttributesCountResponse {
+  error: boolean
+  message?: string
+  vehicleCount?: { actionableCount: number }
+  attributesCount: { attribute: string; count: number }[]
+}
+
+export interface UatScoreAttributesCount {
+  actionableCount: number
+  noPhotosCount: number
+  /** Every attribute the API returned, keyed as-is (e.g. CGI_PRESENT,
+   * INCOMPLETE_MEDIA, LESS_IMAGE, LOW_QUALITY_MEDIA, WRONG_HERO_ANGLE,
+   * NO_MEDIA_SCORE) — only NO_PHOTOS is wired into the UI today, the rest
+   * are carried through for whoever adds more Needs Action categories next. */
+  byAttribute: Record<string, number>
+}
+
+/**
+ * Maps `/inventory/v2/score-attributes-count` onto real, whole-account media
+ * needs-action counts — replaces the Needs Action drawer's "No Photos" count,
+ * which was otherwise computed client-side from whatever vehicle sample is
+ * currently fetched (capped, see the truncation note on /api/inventory).
+ */
+export function mapUatScoreAttributesCount(res: UatScoreAttributesCountResponse): UatScoreAttributesCount {
+  const byAttribute: Record<string, number> = {}
+  for (const { attribute, count } of res.attributesCount ?? []) {
+    byAttribute[attribute] = count
+  }
+  return {
+    actionableCount: res.vehicleCount?.actionableCount ?? 0,
+    noPhotosCount: byAttribute.NO_PHOTOS ?? 0,
+    byAttribute,
+  }
+}
