@@ -27,7 +27,7 @@ import {
   totalTimeToMarket,
 } from "@/lib/mock-data"
 import type { Vehicle } from "@/lib/types"
-import type { UatFilterOptions } from "@/lib/uat-adapter"
+import type { UatFilterOptions, UatTimeToMarket } from "@/lib/uat-adapter"
 import { formatCurrency } from "@/lib/format"
 
 const PAGE_SIZE = 8
@@ -38,6 +38,7 @@ export default function InventoryPage() {
     status: "loading",
   })
   const [realFilterOptions, setRealFilterOptions] = useState<UatFilterOptions | undefined>(undefined)
+  const [realTtm, setRealTtm] = useState<UatTimeToMarket | undefined>(undefined)
   const [tab, setTab] = useState<TabValue>("all")
   const [search, setSearch] = useState("")
   const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set())
@@ -92,6 +93,26 @@ export default function InventoryPage() {
       .catch(() => {
         // Non-fatal — FiltersPanel falls back to counting the fetched
         // vehicle sample when realFilterOptions is undefined.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/inventory/time-to-market")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as UatTimeToMarket
+      })
+      .then((ttm) => {
+        if (!cancelled) setRealTtm(ttm)
+      })
+      .catch(() => {
+        // Non-fatal — the Time to Market card falls back to bucketing the
+        // fetched vehicle sample's current ageDays when realTtm is undefined.
       })
     return () => {
       cancelled = true
@@ -203,12 +224,19 @@ export default function InventoryPage() {
   }, [sorted, page])
 
   const daysSupplyBreakdown = useMemo(() => getDaysSupplyBreakdown(vehicles), [vehicles])
-  const timeToMarketBuckets = useMemo(() => getTimeToMarketBuckets(vehicles), [vehicles])
+  // Real when available (see the time-to-market fetch below) — falls back to
+  // bucketing the fetched vehicles' current ageDays, which measures a
+  // different thing (a snapshot of today's inventory, not the average delay
+  // for units that actually went live in the last 30 days).
+  const timeToMarketBuckets = useMemo(() => realTtm?.buckets ?? getTimeToMarketBuckets(vehicles), [vehicles, realTtm])
+  const timeToMarketValue = realTtm?.averageDays ?? totalTimeToMarket(vehicles)
   const holdingCostBuckets = useMemo(() => getHoldingCostBuckets(vehicles), [vehicles])
   const onTargetTypes = daysSupplyBreakdown.find((b) => b.status === "on_target")
   const overstockedTypes = daysSupplyBreakdown.find((b) => b.status === "overstocked")
 
-  const timeToMarketTrend = useMemo(() => getTrendSeries(totalTimeToMarket(vehicles), "down"), [vehicles])
+  // No real trend/history endpoint yet — this sparkline stays synthetic,
+  // just seeded from the real current average when we have one.
+  const timeToMarketTrend = useMemo(() => getTrendSeries(timeToMarketValue, "down"), [timeToMarketValue])
   const holdingCostTrend = useMemo(() => getTrendSeries(totalHoldingCost(vehicles), "down"), [vehicles])
   const daysSupplyTrend = useMemo(() => getTrendSeries(totalDaysSupply(vehicles), "down"), [vehicles])
 
@@ -296,7 +324,7 @@ export default function InventoryPage() {
               titleLead="Time to"
               titleBold="Market"
               tooltip="Average time from vehicle acquisition to a published, ready-to-sell listing."
-              value={String(totalTimeToMarket(vehicles))}
+              value={String(timeToMarketValue)}
               unit="Days"
               wash="wash-ttm.svg"
               glyph="glyph-ttm.png"

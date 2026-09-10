@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { mapUatDocumentToVehicle, mapUatFacetsToFilterOptions, type UatDocument, type UatFiltersResponse } from "./uat-adapter"
+import {
+  mapUatDocumentToVehicle,
+  mapUatFacetsToFilterOptions,
+  mapUatTimeToMarket,
+  type UatDocument,
+  type UatFiltersResponse,
+  type UatTimeToMarketResponse,
+} from "./uat-adapter"
 
 const NOW = new Date("2026-09-10T12:00:00.000Z").getTime()
 const DAY = 86_400_000
@@ -178,5 +185,41 @@ describe("mapUatFacetsToFilterOptions", () => {
       priceBounds: { min: 0, max: 0 },
       odometerBounds: { min: 0, max: 0 },
     })
+  })
+})
+
+function makeTtmResponse(overrides: Partial<UatTimeToMarketResponse["data"]> = {}): UatTimeToMarketResponse {
+  return {
+    message: "ok",
+    data: {
+      averageDelayInDays: 1.28,
+      timeToMarketBuckets: {
+        lessThan3Days: { vinCount: 4 },
+        between3And6Days: { vinCount: 2 },
+        moreThan6Days: { vinCount: 0 },
+      },
+      ...overrides,
+    },
+  }
+}
+
+describe("mapUatTimeToMarket", () => {
+  it("maps the three buckets onto the app's TimeToMarketBucket labels, in order", () => {
+    const ttm = mapUatTimeToMarket(makeTtmResponse())
+    expect(ttm.buckets).toEqual([
+      { label: "< 3 days", count: 4 },
+      { label: "3–6 days", count: 2 },
+      { label: "6+ days", count: 0 },
+    ])
+  })
+
+  it("rounds averageDays to one decimal place", () => {
+    const ttm = mapUatTimeToMarket(makeTtmResponse({ averageDelayInDays: 1.2837 }))
+    expect(ttm.averageDays).toBe(1.3)
+  })
+
+  it("carries a whole-number average through unchanged", () => {
+    const ttm = mapUatTimeToMarket(makeTtmResponse({ averageDelayInDays: 5 }))
+    expect(ttm.averageDays).toBe(5)
   })
 })

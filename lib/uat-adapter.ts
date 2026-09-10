@@ -1,4 +1,4 @@
-import type { Vehicle } from "./types"
+import type { TimeToMarketBucket, Vehicle } from "./types"
 
 /** Shape of one `document` inside `/inventory/v2/list`'s `vinResp[]`, limited
  * to the fields this adapter actually reads. The real payload has many more. */
@@ -169,5 +169,43 @@ export function mapUatDocumentToVehicle(doc: UatDocument, holdingCostPerDay: num
       needsPromotion: false,
       notLiveYet: !doc.liveOnWeb,
     },
+  }
+}
+
+export interface UatTimeToMarketResponse {
+  message?: string
+  data: {
+    averageDelayInDays: number
+    timeToMarketBuckets: {
+      lessThan3Days: { vinCount: number }
+      between3And6Days: { vinCount: number }
+      moreThan6Days: { vinCount: number }
+    }
+  }
+}
+
+export interface UatTimeToMarket {
+  averageDays: number
+  buckets: TimeToMarketBucket[]
+}
+
+/**
+ * Maps `/inventory/v2/time-to-market` onto the app's TimeToMarketBucket
+ * shape. Unlike days-supply, this is a real, purpose-built backend metric —
+ * not a placeholder — but it measures something different from the mock
+ * version: the average delay for vehicles that actually went live within
+ * the requested date range, not a snapshot of current inventory age. There
+ * is no real trend/history endpoint yet, so the KPI card's week-over-week
+ * sparkline stays synthetic, seeded from this real average.
+ */
+export function mapUatTimeToMarket(res: UatTimeToMarketResponse): UatTimeToMarket {
+  const b = res.data.timeToMarketBuckets
+  return {
+    averageDays: Math.round(res.data.averageDelayInDays * 10) / 10,
+    buckets: [
+      { label: "< 3 days", count: b.lessThan3Days?.vinCount ?? 0 },
+      { label: "3–6 days", count: b.between3And6Days?.vinCount ?? 0 },
+      { label: "6+ days", count: b.moreThan6Days?.vinCount ?? 0 },
+    ],
   }
 }
