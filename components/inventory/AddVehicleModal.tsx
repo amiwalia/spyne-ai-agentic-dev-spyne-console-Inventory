@@ -32,7 +32,7 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
   const [stockNumber, setStockNumber] = useState("")
   const [vin, setVin] = useState("")
   const [mileage, setMileage] = useState("0")
-  const [bodyType, setBodyType] = useState("Midsize Sedan")
+  const [bodyType, setBodyType] = useState("Sedan")
   const [price, setPrice] = useState("")
   const [condition, setCondition] = useState<Condition>("pre-owned")
 
@@ -117,7 +117,7 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
             <div>
               <label style={LABEL_STYLE}>Body type</label>
               <select style={FIELD_STYLE} value={bodyType} onChange={(e) => setBodyType(e.target.value)}>
-                {["Compact Sedan", "Midsize Sedan", "Full-size Sedan", "Compact SUV", "Midsize SUV", "Full-size SUV", "Full-size Truck", "Sport Coupe", "Minivan", "Crossover"].map((bt) => (
+                {["Sedan", "SUV", "Truck", "Sport Coupe", "Minivan", "Crossover"].map((bt) => (
                   <option key={bt} value={bt}>
                     {bt}
                   </option>
