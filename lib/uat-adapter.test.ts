@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest"
 import {
   mapUatDocumentToVehicle,
   mapUatFacetsToFilterOptions,
+  mapUatHoldingCost,
   mapUatPartnerIntegrationStatus,
   mapUatPhotoScore,
   mapUatScoreAttributesCount,
   mapUatTimeToMarket,
   mapUatVinDecode,
+  type UatCentralConfigResponse,
   type UatDocument,
   type UatFiltersResponse,
   type UatPartnerIntegrationStatusResponse,
@@ -372,5 +374,37 @@ describe("mapUatVinDecode", () => {
   it("ignores array-valued fields like exteriorColor rather than throwing", () => {
     const result = mapUatVinDecode(makeVinSnap({ make: { value: "Honda" }, exteriorColor: { value: ["Red", "Blue"] } }))
     expect(result?.make).toBe("Honda")
+  })
+})
+
+describe("mapUatHoldingCost", () => {
+  it("reads holdingCost out of data.entityconfig", () => {
+    const res: UatCentralConfigResponse = { success: true, data: { entityconfig: { holdingCost: 65 } } }
+    expect(mapUatHoldingCost(res)).toBe(65)
+  })
+
+  it("returns 0 as a real, valid value rather than treating it as missing", () => {
+    // The real rooftop this was built against actually had holdingCost: 0 —
+    // falsy but meaningful, must not get coerced to null/default.
+    const res: UatCentralConfigResponse = { success: true, data: { entityconfig: { holdingCost: 0 } } }
+    expect(mapUatHoldingCost(res)).toBe(0)
+  })
+
+  it("returns null when entityconfig has no holdingCost at all", () => {
+    expect(mapUatHoldingCost({ success: true, data: { entityconfig: {} } })).toBeNull()
+    expect(mapUatHoldingCost({ success: true, data: {} })).toBeNull()
+    expect(mapUatHoldingCost({ success: true })).toBeNull()
+  })
+
+  it("does not lose the other real config fields carried in the same response (documentation, not code under test)", () => {
+    // entityconfig has more than holdingCost — vehicleType, sharedRooftops,
+    // vin_live_check, firstTimeUserExperience. This adapter only reads
+    // holdingCost, and the route only ever sends holdingCost back, which a
+    // live POST test confirmed merges rather than replacing the rest.
+    const res: UatCentralConfigResponse = {
+      success: true,
+      data: { entityconfig: { holdingCost: 50, firstTimeUserExperience: true, vehicleType: { new: true } } },
+    }
+    expect(mapUatHoldingCost(res)).toBe(50)
   })
 })

@@ -161,6 +161,29 @@ export default function InventoryPage() {
     }
   }, [])
 
+  // Loads the rooftop's real persisted holding-cost rate once on mount,
+  // overwriting the 50 default above. Deliberately a one-shot fetch, not a
+  // dependency of anything else — updating holdingCostPerDay afterward (via
+  // the popover) is a write the user made, not something to re-fetch over.
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/rooftop/holding-cost")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as { holdingCost: number }
+      })
+      .then((body) => {
+        if (!cancelled) setHoldingCostPerDay(body.holdingCost)
+      })
+      .catch(() => {
+        // Non-fatal — keeps the $50/day default when this fails.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const flashToast = (message: string) => {
     setToast(message)
     setTimeout(() => setToast(null), 2600)
@@ -353,8 +376,21 @@ export default function InventoryPage() {
           <InventoryHeader
             holdingCostPerDay={holdingCostPerDay}
             onHoldingCostChange={(v) => {
+              const previous = holdingCostPerDay
               setHoldingCostPerDay(v)
-              flashToast(`Holding cost set to $${v}/day`)
+              fetch("/api/rooftop/holding-cost", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ holdingCost: v }),
+              })
+                .then((res) => {
+                  if (!res.ok) throw new Error()
+                  flashToast(`Holding cost set to $${v}/day`)
+                })
+                .catch(() => {
+                  setHoldingCostPerDay(previous)
+                  flashToast("Couldn't save the holding cost rate — try again")
+                })
             }}
             onAddVehicle={() => setAddVehicleOpen(true)}
             partners={realPartnerStatus}

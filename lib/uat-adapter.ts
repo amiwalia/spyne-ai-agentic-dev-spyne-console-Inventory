@@ -388,3 +388,27 @@ export function mapUatVinDecode(res: UatVinDecodeResponse): UatVinDecodeResult |
     engine: vinFieldString(vs, "engine"),
   }
 }
+
+export interface UatCentralConfigResponse {
+  success: boolean
+  message?: string
+  data?: {
+    entityconfig?: {
+      holdingCost?: number
+      [key: string]: unknown
+    }
+  }
+}
+
+/**
+ * Reads just the holding-cost rate out of the rooftop's INFO config —
+ * confirmed live that POSTing back only {holdingCost} merges into the
+ * existing entityconfig rather than replacing it (vehicleType,
+ * sharedRooftops, vin_live_check, and firstTimeUserExperience all survived
+ * an update that only touched holdingCost), so that's the only field this
+ * app ever sends.
+ */
+export function mapUatHoldingCost(res: UatCentralConfigResponse): number | null {
+  const value = res.data?.entityconfig?.holdingCost
+  return typeof value === "number" ? value : null
+}
