@@ -2,6 +2,7 @@
 
 import { Car, CheckCircle2, Image as ImageIcon, ImageOff, Info, LayoutGrid, Pencil, X, XCircle } from "lucide-react"
 import type { Vehicle } from "@/lib/types"
+import type { UatPhotoScore } from "@/lib/uat-adapter"
 import { COLOR, GRADIENT } from "@/lib/tokens"
 
 type IssueStatus = "pass" | "fail" | "warning"
@@ -21,6 +22,39 @@ const STATUS_ICON: Record<IssueStatus, { icon: typeof CheckCircle2; color: strin
   pass: { icon: CheckCircle2, color: "rgb(10,124,74)" },
   fail: { icon: XCircle, color: "rgb(192,38,26)" },
   warning: { icon: Info, color: "rgb(178,94,0)" },
+}
+
+const GENERIC_ISSUE_ICONS = [ImageIcon, LayoutGrid, Car, ImageOff]
+
+/** Renders whatever action items the real API returned, generically — the
+ * only real-world sample seen while building this had OTHER_IMAGES and
+ * INCONSISTENT_BACKGROUND, but any other key the backend returns is still
+ * shown (title-cased) rather than silently dropped. All real action items
+ * are rendered as "fail" since the API only lists items that need fixing. */
+function buildRealIssues(real: UatPhotoScore): PhotoIssue[] {
+  if (real.issues.length === 0) {
+    return [
+      {
+        key: "all-clear",
+        title: "No open issues",
+        status: "pass",
+        subtitle: "Meets the current photo quality bar",
+        icon: CheckCircle2,
+        iconBg: "rgb(231,247,239)",
+        iconColor: "rgb(10,124,74)",
+      },
+    ]
+  }
+  return real.issues.map((issue, i) => ({
+    key: issue.key,
+    title: issue.label,
+    status: "fail",
+    subtitle: "Needs attention",
+    count: issue.target !== undefined ? `${issue.actual ?? 0}/${issue.target}` : undefined,
+    icon: GENERIC_ISSUE_ICONS[i % GENERIC_ISSUE_ICONS.length],
+    iconBg: "rgb(253,236,234)",
+    iconColor: "rgb(192,38,26)",
+  }))
 }
 
 function buildIssues(poor: boolean): PhotoIssue[] {
@@ -101,10 +135,22 @@ function ScoreGauge({ value }: { value: number }) {
   )
 }
 
-export function PhotoScoreModal({ vehicle, onClose, onFix }: { vehicle: Vehicle; onClose: () => void; onFix: () => void }) {
-  const poor = vehicle.needsAction.noPhotos
-  const score = poor ? 2.8 : 8.4
-  const issues = buildIssues(poor)
+export function PhotoScoreModal({
+  vehicle,
+  onClose,
+  onFix,
+  realPhotoScore,
+}: {
+  vehicle: Vehicle
+  onClose: () => void
+  onFix: () => void
+  realPhotoScore?: UatPhotoScore | null
+}) {
+  // Real when available (Single VIN Detail API) — falls back to the
+  // needsAction-derived estimate while loading or if the call fails.
+  const poor = realPhotoScore ? realPhotoScore.grade.toUpperCase() !== "GOOD" : vehicle.needsAction.noPhotos
+  const score = realPhotoScore?.score ?? (poor ? 2.8 : 8.4)
+  const issues = realPhotoScore ? buildRealIssues(realPhotoScore) : buildIssues(poor)
   const issueCount = issues.filter((i) => i.status !== "pass").length
 
   return (
@@ -156,7 +202,7 @@ export function PhotoScoreModal({ vehicle, onClose, onFix }: { vehicle: Vehicle;
                 textTransform: "uppercase",
               }}
             >
-              {poor ? "Poor" : "Good"}
+              {realPhotoScore ? realPhotoScore.grade : poor ? "Poor" : "Good"}
             </span>
             <button type="button" onClick={onClose} aria-label="Close" style={{ border: "none", background: "none", cursor: "pointer", color: COLOR.textSecondary, padding: 0 }}>
               <X size={20} />

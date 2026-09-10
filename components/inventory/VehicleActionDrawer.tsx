@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { ArrowLeft, Check, Eye, ImageOff, MousePointerClick, RotateCw } from "lucide-react"
 import type { Vehicle } from "@/lib/types"
+import type { UatPhotoScore } from "@/lib/uat-adapter"
 import { formatCurrency, formatMileage } from "@/lib/format"
 import { getDemandSignal, isHighDemand } from "@/lib/mock-data"
 import { COLOR, GRADIENT, SHELL } from "@/lib/tokens"
@@ -45,6 +46,31 @@ const DETAIL_ROWS = (v: Vehicle) => [
 export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice }: VehicleActionDrawerProps) {
   const [tab, setTab] = useState<Tab>("Overview")
   const [photoScoreOpen, setPhotoScoreOpen] = useState(false)
+  const [realPhotoScore, setRealPhotoScore] = useState<UatPhotoScore | null>(null)
+
+  // Real photo score from the Single VIN Detail API, fetched fresh whenever
+  // a different vehicle is opened. Falls back to the needsAction-derived
+  // score in MerchandiseStatusTab/PhotoScoreModal while this is null.
+  useEffect(() => {
+    if (!vehicle) return
+    let cancelled = false
+    setRealPhotoScore(null)
+    fetch(`/api/inventory/detail?dealerVinId=${encodeURIComponent(vehicle.id)}`)
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as { photoScore: UatPhotoScore | null }
+      })
+      .then((body) => {
+        if (!cancelled) setRealPhotoScore(body.photoScore)
+      })
+      .catch(() => {
+        // Non-fatal — fall back to the needsAction-derived score.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [vehicle?.id])
 
   if (!vehicle) return null
 
@@ -201,7 +227,7 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
                 {tab === "Vehicle Details" && <VehicleDetailsTab key={vehicle.id} vehicle={vehicle} />}
 
                 {tab === "Merchandise Status" && (
-                  <MerchandiseStatusTab vehicle={vehicle} onFixPhotos={() => onResolve(vehicle.id, "noPhotos")} />
+                  <MerchandiseStatusTab vehicle={vehicle} onFixPhotos={() => onResolve(vehicle.id, "noPhotos")} realPhotoScore={realPhotoScore} />
                 )}
 
                 {tab === "Publish Status" && (
@@ -297,6 +323,7 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
     {photoScoreOpen && (
       <PhotoScoreModal
         vehicle={vehicle}
+        realPhotoScore={realPhotoScore}
         onClose={() => setPhotoScoreOpen(false)}
         onFix={() => {
           onResolve(vehicle.id, "noPhotos")

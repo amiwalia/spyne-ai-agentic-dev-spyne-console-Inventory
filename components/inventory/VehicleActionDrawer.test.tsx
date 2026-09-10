@@ -1,8 +1,22 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { VehicleActionDrawer } from "./VehicleActionDrawer"
 import { makeVehicle } from "@/lib/test-fixtures"
+
+beforeEach(() => {
+  // The drawer fetches real photo-score data on mount — stub it so tests
+  // exercise the needsAction-derived fallback path deterministically,
+  // without a real (and unmocked) network call from the test environment.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: async () => ({ photoScore: null }) }),
+  )
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 function renderDrawer() {
   const vehicle = makeVehicle({
@@ -77,5 +91,42 @@ describe("VehicleActionDrawer — Vehicle Journey panel", () => {
     await user.click(screen.getByText("Fix with Studio AI"))
 
     expect(onResolve).toHaveBeenCalledWith(vehicle.id, "noPhotos")
+  })
+})
+
+describe("VehicleActionDrawer — real photo score", () => {
+  it("shows the real score, grade, and action items once the fetch resolves", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          photoScore: {
+            score: 5,
+            grade: "POOR",
+            issues: [{ key: "OTHER_IMAGES", label: "Other Images", actual: 0, target: 5 }],
+          },
+        }),
+      }),
+    )
+    const user = userEvent.setup()
+    renderDrawer()
+
+    await user.click(fixNowButtonFor("Photo score"))
+
+    expect(await screen.findByText("POOR")).toBeInTheDocument()
+    expect(screen.getByText("Other Images")).toBeInTheDocument()
+    expect(screen.getByText("0/5")).toBeInTheDocument()
+  })
+
+  it("falls back to the needsAction-derived estimate if the fetch fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")))
+    const user = userEvent.setup()
+    renderDrawer()
+
+    await user.click(fixNowButtonFor("Photo score"))
+
+    // Same fallback content the default-mocked describe block above checks.
+    expect(await screen.findByText("Action Required")).toBeInTheDocument()
   })
 })

@@ -2,11 +2,23 @@
 
 import { AlertTriangle, ImageOff } from "lucide-react"
 import type { Vehicle } from "@/lib/types"
+import type { UatPhotoScore } from "@/lib/uat-adapter"
 import { COLOR, GRADIENT } from "@/lib/tokens"
 
-export function MerchandiseStatusTab({ vehicle, onFixPhotos }: { vehicle: Vehicle; onFixPhotos: () => void }) {
+export function MerchandiseStatusTab({
+  vehicle,
+  onFixPhotos,
+  realPhotoScore,
+}: {
+  vehicle: Vehicle
+  onFixPhotos: () => void
+  realPhotoScore?: UatPhotoScore | null
+}) {
   const needsPhotos = vehicle.needsAction.noPhotos
-  const photoScore = needsPhotos ? 2.8 : 8.4
+  // Real when available (Single VIN Detail API) — falls back to the
+  // needsAction-derived estimate while loading or if the call fails.
+  const photoScore = realPhotoScore?.score ?? (needsPhotos ? 2.8 : 8.4)
+  const poorGrade = realPhotoScore ? realPhotoScore.grade.toUpperCase() !== "GOOD" : needsPhotos
   const scoreColor = photoScore < 7 ? "rgb(192,38,26)" : "rgb(10,124,74)"
   const imageCount = needsPhotos ? 0 : 8
   const thumbs = Array.from({ length: imageCount }, (_, i) => i)
@@ -61,7 +73,7 @@ export function MerchandiseStatusTab({ vehicle, onFixPhotos }: { vehicle: Vehicl
         </div>
       )}
 
-      {needsPhotos && (
+      {poorGrade && (
         <div
           style={{
             position: "sticky",

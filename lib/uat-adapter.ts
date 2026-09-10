@@ -209,3 +209,66 @@ export function mapUatTimeToMarket(res: UatTimeToMarketResponse): UatTimeToMarke
     ],
   }
 }
+
+interface UatActionItem {
+  actual?: number
+  target?: number
+}
+
+export interface UatVehicleDetailResponse {
+  error: boolean
+  message?: string
+  data: {
+    dealerVinId: string
+    vin: string
+    vehicleScore?: {
+      actionItems?: Record<string, UatActionItem>
+      output?: { score: number; grade: string }
+      qc?: { score: number; grade: string }
+    }
+  }
+}
+
+export interface UatPhotoScoreIssue {
+  key: string
+  label: string
+  actual?: number
+  target?: number
+}
+
+export interface UatPhotoScore {
+  score: number
+  grade: string
+  issues: UatPhotoScoreIssue[]
+}
+
+function humanizeActionItemKey(key: string): string {
+  return key
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+/**
+ * Maps the Single VIN Detail endpoint's `vehicleScore` onto a simplified
+ * shape the Photo Score UI can render. This is a real backend score, not a
+ * placeholder — but action-item keys are only known from the one sample
+ * vehicle inspected while building this (OTHER_IMAGES, INCONSISTENT_
+ * BACKGROUND); any other key the real system returns is still rendered
+ * (title-cased generically) rather than dropped, since the alternative is
+ * silently hiding a real issue the dealer should see.
+ */
+export function mapUatPhotoScore(res: UatVehicleDetailResponse): UatPhotoScore | null {
+  const vs = res.data.vehicleScore
+  if (!vs?.output) return null
+
+  const issues: UatPhotoScoreIssue[] = Object.entries(vs.actionItems ?? {}).map(([key, item]) => ({
+    key,
+    label: humanizeActionItemKey(key),
+    actual: item.actual,
+    target: item.target,
+  }))
+
+  return { score: vs.output.score, grade: vs.output.grade, issues }
+}

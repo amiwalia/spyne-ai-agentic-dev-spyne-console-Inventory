@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest"
 import {
   mapUatDocumentToVehicle,
   mapUatFacetsToFilterOptions,
+  mapUatPhotoScore,
   mapUatTimeToMarket,
   type UatDocument,
   type UatFiltersResponse,
   type UatTimeToMarketResponse,
+  type UatVehicleDetailResponse,
 } from "./uat-adapter"
 
 const NOW = new Date("2026-09-10T12:00:00.000Z").getTime()
@@ -221,5 +223,47 @@ describe("mapUatTimeToMarket", () => {
   it("carries a whole-number average through unchanged", () => {
     const ttm = mapUatTimeToMarket(makeTtmResponse({ averageDelayInDays: 5 }))
     expect(ttm.averageDays).toBe(5)
+  })
+})
+
+function makeDetailResponse(vehicleScore: UatVehicleDetailResponse["data"]["vehicleScore"]): UatVehicleDetailResponse {
+  return { error: false, message: "ok", data: { dealerVinId: "d-1", vin: "VIN1", vehicleScore } }
+}
+
+describe("mapUatPhotoScore", () => {
+  it("maps score, grade, and humanizes each action-item key into a label", () => {
+    const result = mapUatPhotoScore(
+      makeDetailResponse({
+        actionItems: { OTHER_IMAGES: { actual: 0, target: 5 }, INCONSISTENT_BACKGROUND: {} },
+        output: { score: 5, grade: "POOR" },
+      }),
+    )
+    expect(result).toEqual({
+      score: 5,
+      grade: "POOR",
+      issues: [
+        { key: "OTHER_IMAGES", label: "Other Images", actual: 0, target: 5 },
+        { key: "INCONSISTENT_BACKGROUND", label: "Inconsistent Background", actual: undefined, target: undefined },
+      ],
+    })
+  })
+
+  it("returns an empty issues list for a clean vehicle, not null", () => {
+    const result = mapUatPhotoScore(makeDetailResponse({ actionItems: {}, output: { score: 9, grade: "GOOD" } }))
+    expect(result).toEqual({ score: 9, grade: "GOOD", issues: [] })
+  })
+
+  it("returns null when the API has no score for this vehicle yet", () => {
+    expect(mapUatPhotoScore(makeDetailResponse(undefined))).toBeNull()
+    expect(mapUatPhotoScore(makeDetailResponse({}))).toBeNull()
+  })
+
+  it("does not drop an action-item key it doesn't recognize", () => {
+    // Only OTHER_IMAGES/INCONSISTENT_BACKGROUND were ever observed live —
+    // any other key the backend returns should still render, not vanish.
+    const result = mapUatPhotoScore(
+      makeDetailResponse({ actionItems: { SOME_NEW_ISSUE_TYPE: { actual: 1, target: 3 } }, output: { score: 6, grade: "POOR" } }),
+    )
+    expect(result?.issues).toEqual([{ key: "SOME_NEW_ISSUE_TYPE", label: "Some New Issue Type", actual: 1, target: 3 }])
   })
 })
