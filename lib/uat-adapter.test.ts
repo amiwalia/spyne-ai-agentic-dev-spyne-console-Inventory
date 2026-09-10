@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { mapUatDocumentToVehicle, type UatDocument } from "./uat-adapter"
+import { mapUatDocumentToVehicle, mapUatFacetsToFilterOptions, type UatDocument, type UatFiltersResponse } from "./uat-adapter"
 
 const NOW = new Date("2026-09-10T12:00:00.000Z").getTime()
 const DAY = 86_400_000
@@ -126,5 +126,57 @@ describe("mapUatDocumentToVehicle", () => {
     expect(mapUatDocumentToVehicle(makeDoc({ ageDateEpoch: NOW - 10 * DAY }), 50, NOW).daysSupplyStatus).toBe("understocked")
     expect(mapUatDocumentToVehicle(makeDoc({ ageDateEpoch: NOW - 45 * DAY }), 50, NOW).daysSupplyStatus).toBe("on_target")
     expect(mapUatDocumentToVehicle(makeDoc({ ageDateEpoch: NOW - 60 * DAY }), 50, NOW).daysSupplyStatus).toBe("overstocked")
+  })
+})
+
+function makeFiltersResponse(data: UatFiltersResponse["data"]): UatFiltersResponse {
+  return { success: true, message: "ok", data }
+}
+
+describe("mapUatFacetsToFilterOptions", () => {
+  it("lowercases make/model values but keeps the real label casing", () => {
+    const res = makeFiltersResponse({
+      makes: { label: "MAKE", options: [{ key: "toyota", label: "Toyota", count: 768 }] },
+      models: { label: "MODEL", options: [{ key: "camry", label: "Camry", count: 385 }] },
+    })
+    const opts = mapUatFacetsToFilterOptions(res)
+    expect(opts.makes).toEqual([{ value: "toyota", label: "Toyota", count: 768 }])
+    expect(opts.models).toEqual([{ value: "camry", label: "Camry", count: 385 }])
+  })
+
+  it("converts year keys from strings to numbers", () => {
+    const res = makeFiltersResponse({
+      years: { label: "YEAR", options: [{ key: "2023", label: "2023", count: 653 }] },
+    })
+    const opts = mapUatFacetsToFilterOptions(res)
+    expect(opts.years).toEqual([{ value: 2023, label: "2023", count: 653 }])
+  })
+
+  it("drops a year option whose key isn't a valid number", () => {
+    const res = makeFiltersResponse({
+      years: { label: "YEAR", options: [{ key: "unknown", label: "Unknown", count: 4 }] },
+    })
+    expect(mapUatFacetsToFilterOptions(res).years).toEqual([])
+  })
+
+  it("reads price and odometer bounds from the range facet's single option", () => {
+    const res = makeFiltersResponse({
+      priceRange: { label: "PRICE RANGE", type: "range", options: [{ key: "priceRange", label: "Price Range", min: 0, max: 84728724 }] },
+      odometerRange: { label: "ODOMETER RANGE", type: "range", options: [{ key: "odometerRange", label: "Odometer Range", min: 0, max: 29478656 }] },
+    })
+    const opts = mapUatFacetsToFilterOptions(res)
+    expect(opts.priceBounds).toEqual({ min: 0, max: 84728724 })
+    expect(opts.odometerBounds).toEqual({ min: 0, max: 29478656 })
+  })
+
+  it("defaults every facet to an empty/zeroed shape when the data object is bare", () => {
+    const opts = mapUatFacetsToFilterOptions(makeFiltersResponse({}))
+    expect(opts).toEqual({
+      makes: [],
+      models: [],
+      years: [],
+      priceBounds: { min: 0, max: 0 },
+      odometerBounds: { min: 0, max: 0 },
+    })
   })
 })

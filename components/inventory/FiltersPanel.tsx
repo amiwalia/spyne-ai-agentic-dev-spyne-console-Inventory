@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react"
 import { ChevronUp, X } from "lucide-react"
 import type { SourceChannel, Vehicle } from "@/lib/types"
+import type { UatFilterOptions } from "@/lib/uat-adapter"
 import { COLOR } from "@/lib/tokens"
 
 export interface AdvancedFilters {
@@ -38,6 +39,10 @@ interface FiltersPanelProps {
   onChange: (next: AdvancedFilters) => void
   vehicles: Vehicle[]
   onReset: () => void
+  /** Real, whole-dataset facet counts from /inventory/v2/filters, when
+   * available — falls back to counting only the currently-fetched vehicles
+   * (which may be a truncated sample) when not provided. */
+  realFilterOptions?: UatFilterOptions
 }
 
 interface CountedOption<T> {
@@ -57,12 +62,30 @@ function countBy<T extends string | number>(vehicles: Vehicle[], keyFn: (v: Vehi
     .sort((a, b) => b.count - a.count)
 }
 
-export function FiltersPanel({ open, onClose, filters, onChange, vehicles, onReset }: FiltersPanelProps) {
+/** Like countBy, but groups case-insensitively and keeps the first-seen
+ * casing as the display label — the real dataset mixes "Toyota" / "TOYOTA" /
+ * "toyota" for the same make, which would otherwise fragment into separate
+ * checkbox rows that don't match each other. */
+function countByCaseInsensitive(vehicles: Vehicle[], keyFn: (v: Vehicle) => string): CountedOption<string>[] {
+  const counts = new Map<string, { label: string; count: number }>()
+  for (const v of vehicles) {
+    const raw = keyFn(v)
+    const key = raw.toLowerCase()
+    const entry = counts.get(key) ?? { label: raw, count: 0 }
+    entry.count += 1
+    counts.set(key, entry)
+  }
+  return Array.from(counts.entries())
+    .map(([value, { label, count }]) => ({ value, label, count }))
+    .sort((a, b) => b.count - a.count)
+}
+
+export function FiltersPanel({ open, onClose, filters, onChange, vehicles, onReset, realFilterOptions }: FiltersPanelProps) {
   if (!open) return null
 
-  const makeOptions = useMemo(() => countBy(vehicles, (v) => v.make), [vehicles])
-  const modelOptions = useMemo(() => countBy(vehicles, (v) => v.model), [vehicles])
-  const yearOptions = useMemo(() => countBy(vehicles, (v) => v.year), [vehicles])
+  const makeOptions = useMemo(() => realFilterOptions?.makes ?? countByCaseInsensitive(vehicles, (v) => v.make), [vehicles, realFilterOptions])
+  const modelOptions = useMemo(() => realFilterOptions?.models ?? countByCaseInsensitive(vehicles, (v) => v.model), [vehicles, realFilterOptions])
+  const yearOptions = useMemo(() => realFilterOptions?.years ?? countBy(vehicles, (v) => v.year), [vehicles, realFilterOptions])
   const bodyTypeOptions = useMemo(() => countBy(vehicles, (v) => v.bodyType), [vehicles])
   const sourceOptions = useMemo(() => countBy(vehicles, (v) => v.source.channel), [vehicles])
 
@@ -71,9 +94,10 @@ export function FiltersPanel({ open, onClose, filters, onChange, vehicles, onRes
   const spin360Count = Math.min(1, imageStudioCount)
 
   const priceBounds = useMemo(() => {
+    if (realFilterOptions?.priceBounds) return realFilterOptions.priceBounds
     const prices = vehicles.map((v) => v.price)
     return { min: 0, max: prices.length ? Math.max(...prices) : 0 }
-  }, [vehicles])
+  }, [vehicles, realFilterOptions])
 
   const toggleInSet = <T,>(key: keyof AdvancedFilters, value: T) => {
     const current = filters[key] as Set<T>

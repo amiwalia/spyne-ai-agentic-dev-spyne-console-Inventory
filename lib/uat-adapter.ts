@@ -36,6 +36,74 @@ export interface UatListResponse {
   currencyConfig?: { currencyCode: string; currencySign: string }
 }
 
+/** One facet option from `/inventory/v2/filters`, e.g. a single make or year. */
+interface UatFacetOption {
+  key: string
+  label: string
+  count?: number
+  min?: number
+  max?: number
+}
+
+interface UatFacet {
+  label: string
+  type?: string
+  options: UatFacetOption[]
+}
+
+export interface UatFiltersResponse {
+  success: boolean
+  message?: string
+  data: {
+    makes?: UatFacet
+    models?: UatFacet
+    years?: UatFacet
+    priceRange?: UatFacet
+    odometerRange?: UatFacet
+    [key: string]: UatFacet | undefined
+  }
+}
+
+export interface FacetOption<T> {
+  value: T
+  label: string
+  count: number
+}
+
+export interface UatFilterOptions {
+  makes: FacetOption<string>[]
+  models: FacetOption<string>[]
+  years: FacetOption<number>[]
+  priceBounds: { min: number; max: number }
+  odometerBounds: { min: number; max: number }
+}
+
+/**
+ * Maps the real filters-facet response onto the option shapes the Filters
+ * panel renders. Make/model values are lowercased here — the real dataset
+ * has inconsistent casing across records ("Toyota" / "TOYOTA" / "toyota"),
+ * and the panel's selection Set is matched case-insensitively against
+ * vehicle.make/model for exactly that reason. Year keys arrive as strings
+ * ("2023") and are converted to numbers to match Vehicle.year.
+ */
+export function mapUatFacetsToFilterOptions(res: UatFiltersResponse): UatFilterOptions {
+  const makes = (res.data.makes?.options ?? []).map((o) => ({ value: o.key.toLowerCase(), label: o.label, count: o.count ?? 0 }))
+  const models = (res.data.models?.options ?? []).map((o) => ({ value: o.key.toLowerCase(), label: o.label, count: o.count ?? 0 }))
+  const years = (res.data.years?.options ?? [])
+    .map((o) => ({ value: Number(o.key), label: o.label, count: o.count ?? 0 }))
+    .filter((o) => Number.isFinite(o.value))
+  const priceOpt = res.data.priceRange?.options?.[0]
+  const odometerOpt = res.data.odometerRange?.options?.[0]
+
+  return {
+    makes,
+    models,
+    years,
+    priceBounds: { min: priceOpt?.min ?? 0, max: priceOpt?.max ?? 0 },
+    odometerBounds: { min: odometerOpt?.min ?? 0, max: odometerOpt?.max ?? 0 },
+  }
+}
+
 const MS_PER_DAY = 86_400_000
 
 function firstColorName(list: unknown[] | undefined): string | undefined {

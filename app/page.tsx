@@ -27,6 +27,7 @@ import {
   totalTimeToMarket,
 } from "@/lib/mock-data"
 import type { Vehicle } from "@/lib/types"
+import type { UatFilterOptions } from "@/lib/uat-adapter"
 import { formatCurrency } from "@/lib/format"
 
 const PAGE_SIZE = 8
@@ -36,6 +37,7 @@ export default function InventoryPage() {
   const [loadState, setLoadState] = useState<{ status: "loading" | "ready" | "error"; error?: string; meta?: { fetchedCount: number; truncated: boolean } }>({
     status: "loading",
   })
+  const [realFilterOptions, setRealFilterOptions] = useState<UatFilterOptions | undefined>(undefined)
   const [tab, setTab] = useState<TabValue>("all")
   const [search, setSearch] = useState("")
   const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set())
@@ -75,6 +77,26 @@ export default function InventoryPage() {
     // is baked into each vehicle's holdingCost server-side.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdingCostPerDay])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/inventory/filters?isSold=false")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as UatFilterOptions
+      })
+      .then((options) => {
+        if (!cancelled) setRealFilterOptions(options)
+      })
+      .catch(() => {
+        // Non-fatal — FiltersPanel falls back to counting the fetched
+        // vehicle sample when realFilterOptions is undefined.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const flashToast = (message: string) => {
     setToast(message)
@@ -144,8 +166,11 @@ export default function InventoryPage() {
       if (max !== null && v.price > max) return false
       if (advancedFilters.bodyTypes.size > 0 && !advancedFilters.bodyTypes.has(v.bodyType)) return false
       if (advancedFilters.sources.size > 0 && !advancedFilters.sources.has(v.source.channel)) return false
-      if (advancedFilters.makes.size > 0 && !advancedFilters.makes.has(v.make)) return false
-      if (advancedFilters.models.size > 0 && !advancedFilters.models.has(v.model)) return false
+      // Case-insensitive: real make/model values are inconsistently cased
+      // ("Toyota" / "TOYOTA" / "toyota") across the live dataset, and the
+      // selected filter values are always lowercased (see FiltersPanel).
+      if (advancedFilters.makes.size > 0 && !advancedFilters.makes.has(v.make.toLowerCase())) return false
+      if (advancedFilters.models.size > 0 && !advancedFilters.models.has(v.model.toLowerCase())) return false
       if (advancedFilters.years.size > 0 && !advancedFilters.years.has(v.year)) return false
       if (advancedFilters.mediaType.has("capturedMedia") && v.needsAction.noPhotos) return false
       if (advancedFilters.mediaStatus.has("draft") && !v.needsAction.notLiveYet) return false
@@ -404,6 +429,7 @@ export default function InventoryPage() {
         filters={advancedFilters}
         onChange={setAdvancedFilters}
         vehicles={vehicles}
+        realFilterOptions={realFilterOptions}
         onReset={() => setAdvancedFilters(emptyAdvancedFilters())}
       />
 
