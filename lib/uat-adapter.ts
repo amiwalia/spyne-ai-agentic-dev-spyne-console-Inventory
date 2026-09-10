@@ -334,3 +334,57 @@ export type UatPartnerStatus = UatPartnerIntegrationStatusResponse["data"][numbe
 export function mapUatPartnerIntegrationStatus(res: UatPartnerIntegrationStatusResponse): UatPartnerStatus[] {
   return res.data ?? []
 }
+
+interface UatVinSnapField {
+  value?: string | number | string[]
+}
+
+export interface UatVinDecodeResponse {
+  error: boolean
+  message?: string
+  data?: {
+    vinData?: {
+      vehicleSnap?: Record<string, UatVinSnapField>
+    }
+  }
+}
+
+export interface UatVinDecodeResult {
+  year: number | null
+  make: string | null
+  model: string | null
+  trim: string | null
+  style: string | null
+  engine: string | null
+}
+
+function vinFieldString(vehicleSnap: Record<string, UatVinSnapField> | undefined, key: string): string | null {
+  const v = vehicleSnap?.[key]?.value
+  if (typeof v === "string") return v.trim() || null
+  if (typeof v === "number") return String(v)
+  return null
+}
+
+/**
+ * Maps `/inventory/v1/vins/get-vin-data` onto the handful of fields the Add
+ * Vehicle form can actually use today. The real payload carries the same
+ * ~86-field vehicleSnap/featureSnap/engineTransmission/... shape as the
+ * Single VIN Detail endpoint (see mapUatPhotoScore's neighbor types) — only
+ * vehicleSnap's year/make/model/trim/style/engine are pulled out here.
+ * Returns null when the response has no vinData at all (the invalid-VIN
+ * response shape — {isVinValid:false} — has no `data` key to begin with;
+ * the route handler surfaces that case's message separately).
+ */
+export function mapUatVinDecode(res: UatVinDecodeResponse): UatVinDecodeResult | null {
+  const vs = res.data?.vinData?.vehicleSnap
+  if (!vs) return null
+  const yearStr = vinFieldString(vs, "year")
+  return {
+    year: yearStr ? Number(yearStr) : null,
+    make: vinFieldString(vs, "make"),
+    model: vinFieldString(vs, "model"),
+    trim: vinFieldString(vs, "trim"),
+    style: vinFieldString(vs, "style"),
+    engine: vinFieldString(vs, "engine"),
+  }
+}

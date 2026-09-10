@@ -1,14 +1,36 @@
 "use client"
 
 import { useState } from "react"
-import { X } from "lucide-react"
+import { Loader2, X } from "lucide-react"
 import type { Condition, Vehicle } from "@/lib/types"
+import type { UatVinDecodeResult } from "@/lib/uat-adapter"
 import { COLOR } from "@/lib/tokens"
 
 interface AddVehicleModalProps {
   open: boolean
   onClose: () => void
   onAdd: (vehicle: Vehicle) => void
+}
+
+const BODY_TYPE_OPTIONS = ["Sedan", "SUV", "Truck", "Sport Coupe", "Minivan", "Crossover"]
+
+/**
+ * Best-effort mapping from the VIN decoder's free-text "style" field (e.g.
+ * "COUPE 2-DR", "SPORT UTILITY") onto this app's fixed body-type taxonomy.
+ * Not authoritative — the decoder's vocabulary won't always cleanly match
+ * ours, so an unrecognized style is left for the dealer to set manually
+ * rather than guessed at.
+ */
+export function styleToBodyType(style: string | null): string | null {
+  if (!style) return null
+  const s = style.toUpperCase()
+  if (s.includes("COUPE")) return "Sport Coupe"
+  if (s.includes("SUV") || s.includes("SPORT UTILITY")) return "SUV"
+  if (s.includes("TRUCK") || s.includes("PICKUP")) return "Truck"
+  if (s.includes("VAN")) return "Minivan"
+  if (s.includes("CROSSOVER")) return "Crossover"
+  if (s.includes("SEDAN")) return "Sedan"
+  return null
 }
 
 const FIELD_STYLE: React.CSSProperties = {
@@ -35,8 +57,32 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
   const [bodyType, setBodyType] = useState("Sedan")
   const [price, setPrice] = useState("")
   const [condition, setCondition] = useState<Condition>("pre-owned")
+  const [decodeState, setDecodeState] = useState<{ status: "idle" | "loading" | "error"; message?: string }>({ status: "idle" })
 
   if (!open) return null
+
+  const handleDecodeVin = () => {
+    const trimmed = vin.trim()
+    if (!trimmed) return
+    setDecodeState({ status: "loading" })
+    fetch(`/api/inventory/vin-decode?vin=${encodeURIComponent(trimmed)}`)
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as UatVinDecodeResult
+      })
+      .then((result) => {
+        if (result.year) setYear(String(result.year))
+        if (result.make) setMake(result.make)
+        if (result.model) setModel(result.model)
+        const mappedBodyType = styleToBodyType(result.style)
+        if (mappedBodyType) setBodyType(mappedBodyType)
+        setDecodeState({ status: "idle" })
+      })
+      .catch((err: Error) => {
+        setDecodeState({ status: "error", message: err.message })
+      })
+  }
 
   const canSubmit = make.trim() && model.trim() && stockNumber.trim() && vin.trim() && price.trim()
 
@@ -70,6 +116,7 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
     setVin("")
     setMileage("0")
     setPrice("")
+    setDecodeState({ status: "idle" })
   }
 
   return (
@@ -117,7 +164,7 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
             <div>
               <label style={LABEL_STYLE}>Body type</label>
               <select style={FIELD_STYLE} value={bodyType} onChange={(e) => setBodyType(e.target.value)}>
-                {["Sedan", "SUV", "Truck", "Sport Coupe", "Minivan", "Crossover"].map((bt) => (
+                {BODY_TYPE_OPTIONS.map((bt) => (
                   <option key={bt} value={bt}>
                     {bt}
                   </option>
@@ -133,7 +180,46 @@ export function AddVehicleModal({ open, onClose, onAdd }: AddVehicleModalProps) 
             </div>
             <div>
               <label style={LABEL_STYLE}>VIN</label>
-              <input style={FIELD_STYLE} value={vin} onChange={(e) => setVin(e.target.value)} placeholder="VIN..." />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  style={{ ...FIELD_STYLE, flex: 1 }}
+                  value={vin}
+                  onChange={(e) => {
+                    setVin(e.target.value)
+                    if (decodeState.status === "error") setDecodeState({ status: "idle" })
+                  }}
+                  placeholder="VIN..."
+                />
+                <button
+                  type="button"
+                  onClick={handleDecodeVin}
+                  disabled={!vin.trim() || decodeState.status === "loading"}
+                  style={{
+                    flexShrink: 0,
+                    height: 38,
+                    padding: "0 12px",
+                    borderRadius: 10,
+                    border: `1px solid ${COLOR.borderSoft}`,
+                    background: "#fff",
+                    color: COLOR.primary,
+                    fontWeight: 700,
+                    fontSize: 12.5,
+                    fontFamily: "inherit",
+                    cursor: !vin.trim() || decodeState.status === "loading" ? "not-allowed" : "pointer",
+                    opacity: !vin.trim() ? 0.5 : 1,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {decodeState.status === "loading" && <Loader2 size={13} className="spyne-spin" />}
+                  Decode
+                </button>
+              </div>
+              {decodeState.status === "error" && (
+                <p style={{ margin: "5px 0 0", fontSize: 11.5, fontWeight: 600, color: "rgb(192,38,26)" }}>{decodeState.message}</p>
+              )}
             </div>
           </div>
 

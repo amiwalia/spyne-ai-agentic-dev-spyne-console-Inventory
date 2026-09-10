@@ -6,12 +6,14 @@ import {
   mapUatPhotoScore,
   mapUatScoreAttributesCount,
   mapUatTimeToMarket,
+  mapUatVinDecode,
   type UatDocument,
   type UatFiltersResponse,
   type UatPartnerIntegrationStatusResponse,
   type UatScoreAttributesCountResponse,
   type UatTimeToMarketResponse,
   type UatVehicleDetailResponse,
+  type UatVinDecodeResponse,
 } from "./uat-adapter"
 
 const NOW = new Date("2026-09-10T12:00:00.000Z").getTime()
@@ -327,5 +329,48 @@ describe("mapUatPartnerIntegrationStatus", () => {
 
   it("defaults to an empty array when data is missing", () => {
     expect(mapUatPartnerIntegrationStatus({ success: true, data: undefined as never })).toEqual([])
+  })
+})
+
+function makeVinSnap(fields: Record<string, { value?: string | number | string[] }>): UatVinDecodeResponse {
+  return { error: false, message: "ok", data: { vinData: { vehicleSnap: fields } } }
+}
+
+describe("mapUatVinDecode", () => {
+  it("pulls year/make/model/trim/style/engine out of vehicleSnap", () => {
+    const result = mapUatVinDecode(
+      makeVinSnap({
+        year: { value: 2003 },
+        make: { value: "Honda" },
+        model: { value: "Accord" },
+        trim: { value: "EX V6 Coupe AT with Navigation System" },
+        style: { value: "COUPE 2-DR" },
+        engine: { value: "V6 SOHC 24V" },
+      }),
+    )
+    expect(result).toEqual({
+      year: 2003,
+      make: "Honda",
+      model: "Accord",
+      trim: "EX V6 Coupe AT with Navigation System",
+      style: "COUPE 2-DR",
+      engine: "V6 SOHC 24V",
+    })
+  })
+
+  it("returns null fields for blank strings rather than empty strings", () => {
+    const result = mapUatVinDecode(makeVinSnap({ make: { value: "" }, model: { value: "  " } }))
+    expect(result?.make).toBeNull()
+    expect(result?.model).toBeNull()
+  })
+
+  it("returns null overall when there is no vinData at all", () => {
+    expect(mapUatVinDecode({ error: false, data: undefined })).toBeNull()
+    expect(mapUatVinDecode({ error: false, data: { vinData: undefined } })).toBeNull()
+  })
+
+  it("ignores array-valued fields like exteriorColor rather than throwing", () => {
+    const result = mapUatVinDecode(makeVinSnap({ make: { value: "Honda" }, exteriorColor: { value: ["Red", "Blue"] } }))
+    expect(result?.make).toBe("Honda")
   })
 })
