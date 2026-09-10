@@ -27,7 +27,7 @@ import {
   totalTimeToMarket,
 } from "@/lib/mock-data"
 import type { Vehicle } from "@/lib/types"
-import type { UatFilterOptions, UatScoreAttributesCount, UatTimeToMarket } from "@/lib/uat-adapter"
+import type { UatFilterOptions, UatPartnerStatus, UatScoreAttributesCount, UatTimeToMarket } from "@/lib/uat-adapter"
 import { formatCurrency } from "@/lib/format"
 
 const PAGE_SIZE = 8
@@ -40,6 +40,7 @@ export default function InventoryPage() {
   const [realFilterOptions, setRealFilterOptions] = useState<UatFilterOptions | undefined>(undefined)
   const [realTtm, setRealTtm] = useState<UatTimeToMarket | undefined>(undefined)
   const [realScoreAttrs, setRealScoreAttrs] = useState<UatScoreAttributesCount | undefined>(undefined)
+  const [realPartnerStatus, setRealPartnerStatus] = useState<UatPartnerStatus[] | undefined>(undefined)
   const [tab, setTab] = useState<TabValue>("all")
   const [search, setSearch] = useState("")
   const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set())
@@ -134,6 +135,26 @@ export default function InventoryPage() {
       .catch(() => {
         // Non-fatal — the Needs Action drawer's "No Photos" row falls back
         // to counting the fetched vehicle sample when this is undefined.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/partner/integration-status")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as { partners: UatPartnerStatus[] }
+      })
+      .then((body) => {
+        if (!cancelled) setRealPartnerStatus(body.partners)
+      })
+      .catch(() => {
+        // Non-fatal — the header shows "Checking sync status…" indefinitely
+        // rather than a fabricated timestamp when this fails.
       })
     return () => {
       cancelled = true
@@ -336,6 +357,7 @@ export default function InventoryPage() {
               flashToast(`Holding cost set to $${v}/day`)
             }}
             onAddVehicle={() => setAddVehicleOpen(true)}
+            partners={realPartnerStatus}
           />
 
           <VehicleTabs active={tab} onChange={(v) => { setTab(v); setPage(1) }} counts={counts} />

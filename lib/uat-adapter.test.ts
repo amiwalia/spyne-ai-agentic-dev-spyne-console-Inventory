@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest"
 import {
   mapUatDocumentToVehicle,
   mapUatFacetsToFilterOptions,
+  mapUatPartnerIntegrationStatus,
   mapUatPhotoScore,
   mapUatScoreAttributesCount,
   mapUatTimeToMarket,
   type UatDocument,
   type UatFiltersResponse,
+  type UatPartnerIntegrationStatusResponse,
   type UatScoreAttributesCountResponse,
   type UatTimeToMarketResponse,
   type UatVehicleDetailResponse,
@@ -308,5 +310,22 @@ describe("mapUatScoreAttributesCount", () => {
   it("defaults actionableCount to 0 when vehicleCount is missing", () => {
     const result = mapUatScoreAttributesCount(makeScoreAttrsResponse({ vehicleCount: undefined }))
     expect(result.actionableCount).toBe(0)
+  })
+})
+
+describe("mapUatPartnerIntegrationStatus", () => {
+  it("passes through the partner list as-is", () => {
+    const res: UatPartnerIntegrationStatusResponse = {
+      success: true,
+      data: [
+        { partnerId: "1", partnerName: "VAuto", partnerLogo: null, lastReceivedAt: "2026-09-03T10:45:16.465Z" },
+        { partnerId: "2", partnerName: "Autograph/EVN", partnerLogo: "logo.png", lastReceivedAt: null },
+      ],
+    }
+    expect(mapUatPartnerIntegrationStatus(res)).toEqual(res.data)
+  })
+
+  it("defaults to an empty array when data is missing", () => {
+    expect(mapUatPartnerIntegrationStatus({ success: true, data: undefined as never })).toEqual([])
   })
 })

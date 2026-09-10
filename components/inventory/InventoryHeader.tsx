@@ -1,31 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Plus } from "lucide-react"
+import type { UatPartnerStatus } from "@/lib/uat-adapter"
 import { GRADIENT, SHADOW } from "@/lib/tokens"
 import { DealerScopeToggle } from "./DealerScopeToggle"
 import { HoldingCostPopover } from "./HoldingCostPopover"
+import { IntegrationStatusIndicator } from "./IntegrationStatusIndicator"
 
 interface InventoryHeaderProps {
   holdingCostPerDay: number
   onHoldingCostChange: (value: number) => void
   onAddVehicle: () => void
+  /** undefined while the /partner/integration-status fetch is in flight. */
+  partners?: UatPartnerStatus[]
 }
 
-export function InventoryHeader({ holdingCostPerDay, onHoldingCostChange, onAddVehicle }: InventoryHeaderProps) {
-  // Computed client-side only, after mount — a server-rendered timestamp would
-  // near-inevitably mismatch the client's and trigger a hydration error.
-  const [lastSynced, setLastSynced] = useState("")
-  useEffect(() => {
-    setLastSynced(new Date().toLocaleString("en-US", { hour: "numeric", minute: "2-digit" }))
-  }, [])
-
+export function InventoryHeader({ holdingCostPerDay, onHoldingCostChange, onAddVehicle, partners }: InventoryHeaderProps) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
       <div>
         <div style={{ fontSize: 22, fontWeight: 700, color: "rgb(8,8,8)" }}>Hi John, 👋</div>
-        <div style={{ fontSize: 14, fontWeight: 500, color: "rgb(111,106,128)", marginTop: 2 }}>
-          Last synced: Today, {lastSynced}
+        <div style={{ marginTop: 2 }}>
+          <IntegrationStatusIndicator partners={partners} />
         </div>
       </div>
 

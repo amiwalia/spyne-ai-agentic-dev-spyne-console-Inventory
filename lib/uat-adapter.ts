@@ -307,3 +307,30 @@ export function mapUatScoreAttributesCount(res: UatScoreAttributesCountResponse)
     byAttribute,
   }
 }
+
+export interface UatPartnerIntegrationStatusResponse {
+  success: boolean
+  message?: string
+  data: {
+    partnerId: string
+    partnerName: string
+    partnerLogo: string | null
+    /** ISO timestamp of the last feed received from this partner, or null
+     * if this partner has never sent one — i.e. the connection exists but
+     * has never actually synced, not the same as "not connected at all". */
+    lastReceivedAt: string | null
+  }[]
+}
+
+export type UatPartnerStatus = UatPartnerIntegrationStatusResponse["data"][number]
+
+/**
+ * Pass-through with a type guard, not really a transform — the real
+ * response already matches the shape the UI wants. Kept as an adapter
+ * function anyway for the same reason every other endpoint has one: a
+ * single, testable seam between "what the UAT API returns today" and
+ * "what the UI reads," so a future field-name change breaks one place.
+ */
+export function mapUatPartnerIntegrationStatus(res: UatPartnerIntegrationStatusResponse): UatPartnerStatus[] {
+  return res.data ?? []
+}
