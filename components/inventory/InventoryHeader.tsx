@@ -3,7 +3,6 @@
 import { Plus } from "lucide-react"
 import type { UatPartnerStatus } from "@/lib/uat-adapter"
 import { GRADIENT, SHADOW } from "@/lib/tokens"
-import { DealerScopeToggle } from "./DealerScopeToggle"
 import { HoldingCostPopover } from "./HoldingCostPopover"
 import { IntegrationStatusIndicator } from "./IntegrationStatusIndicator"
 
@@ -26,8 +25,6 @@ export function InventoryHeader({ holdingCostPerDay, onHoldingCostChange, onAddV
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <DealerScopeToggle />
-
         <HoldingCostPopover value={holdingCostPerDay} onSave={onHoldingCostChange} />
 
         <button

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Check } from "lucide-react"
 import type { Vehicle } from "@/lib/types"
 import { COLOR } from "@/lib/tokens"
 import { buildSections, FieldsGrid, STD_OPT_NA } from "./fields"
@@ -41,21 +42,98 @@ function buildInitialValues(v: Vehicle): Record<string, string> {
 }
 
 export function VehicleDetailsTab({ vehicle }: { vehicle: Vehicle }) {
-  const [values, setValues] = useState<Record<string, string>>(() => buildInitialValues(vehicle))
+  const [savedValues, setSavedValues] = useState<Record<string, string>>(() => buildInitialValues(vehicle))
+  const [values, setValues] = useState<Record<string, string>>(savedValues)
 
   const yearOptions = Array.from({ length: 6 }, (_, i) => String(vehicle.year - i))
   const sections = buildSections(yearOptions)
 
   const onChange = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }))
 
+  const changedCount = Object.keys(values).filter((key) => values[key] !== savedValues[key]).length
+  const isDirty = changedCount > 0
+
+  const handleCancel = () => setValues(savedValues)
+  const handleSave = () => setSavedValues(values)
+
   return (
-    <div style={{ paddingBottom: 4 }}>
+    <div style={{ paddingBottom: isDirty ? 0 : 4 }}>
       {sections.map((section, i) => (
         <div key={section.title} style={i === 0 ? undefined : { marginTop: 24, paddingTop: 22, borderTop: `1px solid ${COLOR.borderSofter}` }}>
           <h3 style={{ margin: "0 0 0", fontSize: 14, fontWeight: 600, color: COLOR.ink, letterSpacing: -0.1 }}>{section.title}</h3>
           <FieldsGrid fields={section.fields} values={values} onChange={onChange} />
         </div>
       ))}
+
+      {isDirty && (
+        <div style={{ position: "sticky", bottom: 16, display: "flex", justifyContent: "center", paddingTop: 24, pointerEvents: "none" }}>
+          <div
+            style={{
+              pointerEvents: "auto",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              height: 52,
+              padding: "0 10px 0 16px",
+              borderRadius: 16,
+              background: "rgb(24,22,30)",
+              boxShadow: "rgba(20,16,40,0.12) 0px 4px 10px, rgba(20,16,40,0.28) 0px 14px 30px -10px",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.14)",
+                flexShrink: 0,
+              }}
+            >
+              <Check size={13} color="#fff" strokeWidth={2.5} />
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#fff", whiteSpace: "nowrap" }}>
+              {changedCount} {changedCount === 1 ? "change" : "changes"}
+            </span>
+            <button
+              type="button"
+              onClick={handleCancel}
+              style={{
+                height: 36,
+                padding: "0 16px",
+                border: "none",
+                borderRadius: 10,
+                background: "rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.85)",
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              style={{
+                height: 36,
+                padding: "0 18px",
+                border: "none",
+                borderRadius: 10,
+                background: COLOR.primary,
+                color: "#fff",
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

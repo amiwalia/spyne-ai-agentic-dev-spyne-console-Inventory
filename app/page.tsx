@@ -29,6 +29,7 @@ import {
 import type { Vehicle } from "@/lib/types"
 import type { UatFilterOptions, UatPartnerStatus, UatScoreAttributesCount, UatTimeToMarket } from "@/lib/uat-adapter"
 import { formatCurrency } from "@/lib/format"
+import { downloadCsv, vehiclesToCsv } from "@/lib/csv"
 
 const PAGE_SIZE = 8
 
@@ -45,6 +46,11 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("")
   const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set())
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(emptyAdvancedFilters())
+  // Set once from the /segments handoff (?bodyType=). Rendering it as a
+  // derived banner (below) rather than trusting this flag alone means it
+  // auto-hides the moment the dealer's own filter edits stop matching a
+  // single clean segment, instead of lying about what's on screen.
+  const [segmentContext, setSegmentContext] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
@@ -80,6 +86,26 @@ export default function InventoryPage() {
     // is baked into each vehicle's holdingCost server-side.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdingCostPerDay])
+
+  // Picks up the segment handoff from /segments' "View all" link
+  // (?bodyType=SUV) so the table opens pre-scoped instead of dumping the
+  // whole rooftop's inventory on the dealer — pre-sorted highest holding
+  // cost first, matching the priority order the segment accordion itself
+  // already promised before the dealer ever clicked through.
+  useEffect(() => {
+    const bodyType = new URLSearchParams(window.location.search).get("bodyType")
+    if (!bodyType) return
+    setAdvancedFilters((prev) => ({ ...prev, bodyTypes: new Set([bodyType]) }))
+    setSegmentContext(bodyType)
+    setSortKey("holdingCost")
+    setSortDirection("desc")
+  }, [])
+
+  const clearSegmentContext = () => {
+    setAdvancedFilters((prev) => ({ ...prev, bodyTypes: new Set() }))
+    setSegmentContext(null)
+    setPage(1)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -354,16 +380,7 @@ export default function InventoryPage() {
   }
 
   const handleExport = () => {
-    const header = ["Stock #", "VIN", "Year", "Make", "Model", "Price", "Days Supply", "Source", "Age (days)", "Holding Cost"]
-    const rows = filtered.map((v) => [v.stockNumber, v.vin, v.year, v.make, v.model, v.price, v.daysSupply, v.source.channel, v.ageDays, v.holdingCost])
-    const csv = [header, ...rows].map((row) => row.join(",")).join("\n")
-    const blob = new Blob([csv], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = "inventory-export.csv"
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadCsv(vehiclesToCsv(filtered), "inventory-export.csv")
     flashToast(`Exported ${filtered.length} vehicles`)
   }
 
@@ -476,6 +493,33 @@ export default function InventoryPage() {
             activeAdvancedCount={advancedFilterCount}
             onSelectPreset={handleSelectPreset}
           />
+
+          {segmentContext !== null && advancedFilters.bodyTypes.size === 1 && advancedFilters.bodyTypes.has(segmentContext) && (
+            <div
+              style={{
+                marginTop: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                padding: "10px 16px",
+                borderRadius: 10,
+                background: "rgb(245,241,255)",
+                border: "1px solid rgb(225,214,255)",
+              }}
+            >
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: "rgb(76,44,181)" }}>
+                Showing {filtered.length} {segmentContext} vehicle{filtered.length === 1 ? "" : "s"}, highest holding cost first
+              </span>
+              <button
+                type="button"
+                onClick={clearSegmentContext}
+                style={{ padding: 0, border: "none", background: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "rgb(76,44,181)", textDecoration: "underline" }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
 
           {loadState.status === "error" && (
             <div style={{ marginTop: 16, padding: "12px 16px", borderRadius: 10, background: "rgb(253,236,234)", color: "rgb(192,38,26)", fontSize: 13, fontWeight: 600 }}>

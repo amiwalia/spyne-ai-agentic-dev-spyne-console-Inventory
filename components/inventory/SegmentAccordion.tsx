@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, ImageOff } from "lucide-react"
+import Link from "next/link"
+import { ChevronDown, ChevronRight, Download, ImageOff } from "lucide-react"
 import type { SegmentDaysSupply, Vehicle } from "@/lib/types"
 import { formatCurrency } from "@/lib/format"
+import { downloadCsv, vehiclesToCsv } from "@/lib/csv"
 import { COLOR, SHADOW } from "@/lib/tokens"
 import { SupplyStatusBadge } from "./SupplyStatusBadge"
 
@@ -11,6 +13,10 @@ interface SegmentAccordionProps {
   segments: SegmentDaysSupply[]
   vehicles: Vehicle[]
 }
+
+// Inline preview is capped so a 100-vehicle segment doesn't dump every row
+// into the page at once — "View all" hands off to the full filterable table.
+const INLINE_PREVIEW_COUNT = 6
 
 export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -27,7 +33,11 @@ export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) 
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {segments.map((seg) => {
         const isOpen = expanded.has(seg.bodyType)
-        const segVehicles = vehicles.filter((v) => v.bodyType === seg.bodyType)
+        // Highest holding cost first — the dollars-at-risk vehicles are what
+        // the dealer needs to see before scrolling through the whole segment.
+        const segVehicles = vehicles.filter((v) => v.bodyType === seg.bodyType).sort((a, b) => b.holdingCost - a.holdingCost)
+        const previewVehicles = segVehicles.slice(0, INLINE_PREVIEW_COUNT)
+        const remainingCount = segVehicles.length - previewVehicles.length
 
         return (
           <div
@@ -62,11 +72,34 @@ export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) 
               <div style={{ flexShrink: 0 }}>
                 <SupplyStatusBadge status={seg.status} />
               </div>
+              <button
+                type="button"
+                title={`Export all ${seg.vehicleCount} ${seg.bodyType} vehicles as CSV`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  downloadCsv(vehiclesToCsv(segVehicles), `${seg.bodyType.toLowerCase().replace(/\s+/g, "-")}-vehicles.csv`)
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 32,
+                  height: 32,
+                  flexShrink: 0,
+                  borderRadius: 9,
+                  border: `1px solid ${COLOR.borderButton}`,
+                  background: "#fff",
+                  color: COLOR.textSecondary,
+                  cursor: "pointer",
+                }}
+              >
+                <Download size={14} />
+              </button>
             </div>
 
             {isOpen && (
               <div style={{ borderTop: `1px solid ${COLOR.borderSofter}` }}>
-                {segVehicles.map((v) => (
+                {previewVehicles.map((v) => (
                   <div
                     key={v.id}
                     style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 20px 12px 51px", borderBottom: `1px solid ${COLOR.borderSofterer}` }}
@@ -107,6 +140,27 @@ export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) 
                     </span>
                   </div>
                 ))}
+
+                {remainingCount > 0 && (
+                  <Link
+                    href={`/?bodyType=${encodeURIComponent(seg.bodyType)}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      padding: "13px 20px",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: COLOR.primary,
+                      textDecoration: "none",
+                      background: "rgb(250,249,255)",
+                    }}
+                  >
+                    View all {seg.vehicleCount} vehicles in {seg.bodyType}
+                    <ChevronRight size={14} />
+                  </Link>
+                )}
               </div>
             )}
           </div>
