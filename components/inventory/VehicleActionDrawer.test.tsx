@@ -26,10 +26,9 @@ function renderDrawer() {
     needsAction: { noPhotos: true, needsPromotion: true, notLiveYet: true },
   })
   const onResolve = vi.fn()
-  const onApplyPrice = vi.fn()
   const onClose = vi.fn()
-  render(<VehicleActionDrawer vehicle={vehicle} onClose={onClose} onResolve={onResolve} onApplyPrice={onApplyPrice} />)
-  return { vehicle, onResolve, onApplyPrice, onClose }
+  render(<VehicleActionDrawer vehicle={vehicle} onClose={onClose} onResolve={onResolve} />)
+  return { vehicle, onResolve, onClose }
 }
 
 function fixNowButtonFor(label: string) {

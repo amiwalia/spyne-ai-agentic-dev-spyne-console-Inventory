@@ -68,7 +68,9 @@ export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) 
                   {seg.vehicleCount} vehicle{seg.vehicleCount === 1 ? "" : "s"} · click to view vehicle details
                 </p>
               </div>
-              <span style={{ fontSize: 17, fontWeight: 700, color: COLOR.ink, flexShrink: 0 }}>{seg.avgDaysSupply}d</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: COLOR.ink, flexShrink: 0 }}>
+                {seg.avgDaysSupply === null ? "—" : `${seg.avgDaysSupply.toLocaleString("en-US")}d`}
+              </span>
               <div style={{ flexShrink: 0 }}>
                 <SupplyStatusBadge status={seg.status} />
               </div>
@@ -99,6 +101,14 @@ export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) 
 
             {isOpen && (
               <div style={{ borderTop: `1px solid ${COLOR.borderSofter}` }}>
+                {segVehicles.length === 0 && (
+                  <p style={{ margin: 0, padding: "16px 20px 16px 51px", fontSize: 12.5, color: COLOR.textMuted }}>
+                    {seg.vehicleCount > 0
+                      ? `${seg.vehicleCount.toLocaleString("en-US")} vehicles fleet-wide, but none are in the ${vehicles.length.toLocaleString("en-US")} most recently loaded — try again once more inventory has synced.`
+                      : "No vehicles in this segment."}
+                  </p>
+                )}
+
                 {previewVehicles.map((v) => (
                   <div
                     key={v.id}
@@ -157,7 +167,7 @@ export function SegmentAccordion({ segments, vehicles }: SegmentAccordionProps) 
                       background: "rgb(250,249,255)",
                     }}
                   >
-                    View all {seg.vehicleCount} vehicles in {seg.bodyType}
+                    View all {segVehicles.length} vehicles in {seg.bodyType}
                     <ChevronRight size={14} />
                   </Link>
                 )}

@@ -1,5 +1,6 @@
 import type {
   DaysSupplyBreakdownEntry,
+  DaysSupplyStatus,
   DemandSignal,
   HoldingCostBucket,
   PricingInsight,
@@ -691,7 +692,12 @@ export function getSegmentBreakdown(vehicles: Vehicle[]): SegmentDaysSupply[] {
 
   const STATUS_RANK: Record<string, number> = { overstocked: 0, understocked: 1, on_target: 2 }
 
-  const segments: SegmentDaysSupply[] = Array.from(byType.entries()).map(([bodyType, entry]) => {
+  // Every field here is always non-null (computed from real numbers) —
+  // unlike the real days-supply/segments backend, which can come back with
+  // avgDaysSupply/status null for segments it hasn't scored yet. Kept as a
+  // locally non-nullable shape so the sort below doesn't need null guards;
+  // it's still assignable to the wider SegmentDaysSupply return type.
+  const segments = Array.from(byType.entries()).map(([bodyType, entry]) => {
     // A count tie defaults to the more actionable status (overstocked/understocked)
     // rather than on_target, so a segment split evenly doesn't read as "all clear".
     const [dominantStatus] = Object.entries(entry.status).sort((a, b) => {
@@ -702,7 +708,7 @@ export function getSegmentBreakdown(vehicles: Vehicle[]): SegmentDaysSupply[] {
       bodyType,
       vehicleCount: entry.count,
       avgDaysSupply: Math.round(entry.totalDays / entry.count),
-      status: dominantStatus as SegmentDaysSupply["status"],
+      status: dominantStatus as DaysSupplyStatus,
     }
   })
 

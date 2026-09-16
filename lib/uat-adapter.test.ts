@@ -1,16 +1,23 @@
 import { describe, expect, it } from "vitest"
 import {
+  mapUatDaysSupplySegments,
+  mapUatDaysSupplySummary,
   mapUatDocumentToVehicle,
   mapUatFacetsToFilterOptions,
   mapUatHoldingCost,
+  mapUatHoldingCostSummary,
+  mapUatHomeStats,
   mapUatPartnerIntegrationStatus,
   mapUatPhotoScore,
   mapUatScoreAttributesCount,
   mapUatTimeToMarket,
   mapUatVinDecode,
   type UatCentralConfigResponse,
+  type UatDaysSupplySegmentsResponse,
   type UatDocument,
   type UatFiltersResponse,
+  type UatHoldingCostSummaryResponse,
+  type UatHomeStatsResponse,
   type UatPartnerIntegrationStatusResponse,
   type UatScoreAttributesCountResponse,
   type UatTimeToMarketResponse,
@@ -406,5 +413,127 @@ describe("mapUatHoldingCost", () => {
       data: { entityconfig: { holdingCost: 50, firstTimeUserExperience: true, vehicleType: { new: true } } },
     }
     expect(mapUatHoldingCost(res)).toBe(50)
+  })
+})
+
+describe("mapUatDaysSupplySegments", () => {
+  it("maps bodyType, vehicleCount, avgDaysSupply, and status straight through", () => {
+    const res: UatDaysSupplySegmentsResponse = {
+      error: false,
+      data: { segments: [{ bodyType: "sedan", vehicleCount: 47, avgDaysSupply: 55, status: "overstocked" }] },
+    }
+    expect(mapUatDaysSupplySegments(res)).toEqual([{ bodyType: "sedan", vehicleCount: 47, avgDaysSupply: 55, status: "overstocked" }])
+  })
+
+  it("keeps a null avgDaysSupply as null rather than defaulting it to 0", () => {
+    // Most segments on both UAT dealers tested against come back with
+    // avgDaysSupply: null — not enough sales history yet, not zero days.
+    const res: UatDaysSupplySegmentsResponse = {
+      error: false,
+      data: { segments: [{ bodyType: "hatchback", vehicleCount: 10, avgDaysSupply: null, status: null }] },
+    }
+    expect(mapUatDaysSupplySegments(res)[0].avgDaysSupply).toBeNull()
+  })
+
+  it("maps an unrecognized status string to null instead of passing it through untyped", () => {
+    const res: UatDaysSupplySegmentsResponse = {
+      error: false,
+      data: { segments: [{ bodyType: "wagon", vehicleCount: 3, avgDaysSupply: 20, status: "some-future-status" }] },
+    }
+    expect(mapUatDaysSupplySegments(res)[0].status).toBeNull()
+  })
+
+  it("passes through an implausibly large avgDaysSupply rather than clamping it", () => {
+    // Seen live: 1,220,940 for one UAT dealer's "sedan" segment. Clearly a
+    // backend data-quality issue, not something this adapter should mask.
+    const res: UatDaysSupplySegmentsResponse = {
+      error: false,
+      data: { segments: [{ bodyType: "sedan", vehicleCount: 13566, avgDaysSupply: 1220940, status: "overstocked" }] },
+    }
+    expect(mapUatDaysSupplySegments(res)[0].avgDaysSupply).toBe(1220940)
+  })
+
+  it("returns an empty array when the response has no segments at all", () => {
+    expect(mapUatDaysSupplySegments({ error: false, data: {} })).toEqual([])
+    expect(mapUatDaysSupplySegments({ error: false })).toEqual([])
+  })
+
+  it("maps a blank bodyType to 'Unspecified', matching how per-vehicle rows already handle it", () => {
+    // Seen live: a blank-bodyType segment with 2,510 vehicles — the second
+    // largest segment for that dealer, not an edge case to skip.
+    const res: UatDaysSupplySegmentsResponse = {
+      error: false,
+      data: { segments: [{ bodyType: "", vehicleCount: 2510, avgDaysSupply: 11889, status: "overstocked" }] },
+    }
+    expect(mapUatDaysSupplySegments(res)[0].bodyType).toBe("Unspecified")
+  })
+})
+
+describe("mapUatDaysSupplySummary", () => {
+  it("maps the fleet-wide aggregate fields straight through", () => {
+    const res: UatDaysSupplySegmentsResponse = {
+      error: false,
+      data: { avgDaysSupply: 85618, onTargetTypes: 0, overstockedTypes: 10, understockedTypes: 0, segments: [] },
+    }
+    expect(mapUatDaysSupplySummary(res)).toEqual({ avgDaysSupply: 85618, onTargetTypes: 0, overstockedTypes: 10, understockedTypes: 0 })
+  })
+
+  it("keeps a null avgDaysSupply as null rather than defaulting it to 0", () => {
+    const res: UatDaysSupplySegmentsResponse = { error: false, data: { avgDaysSupply: null } }
+    expect(mapUatDaysSupplySummary(res).avgDaysSupply).toBeNull()
+  })
+
+  it("defaults the type counts to 0 rather than throwing when missing", () => {
+    const summary = mapUatDaysSupplySummary({ error: false, data: {} })
+    expect(summary).toEqual({ avgDaysSupply: null, onTargetTypes: 0, overstockedTypes: 0, understockedTypes: 0 })
+  })
+})
+
+describe("mapUatHoldingCostSummary", () => {
+  it("maps totalHoldingCost and buckets straight through", () => {
+    const res: UatHoldingCostSummaryResponse = {
+      error: false,
+      data: { totalHoldingCost: 52500, buckets: [{ label: "< $500", count: 30 }] },
+    }
+    expect(mapUatHoldingCostSummary(res)).toEqual({ totalHoldingCost: 52500, buckets: [{ label: "< $500", count: 30 }] })
+  })
+
+  it("keeps a null totalHoldingCost as null rather than treating it as $0", () => {
+    // Both UAT dealers tested against come back with totalHoldingCost: null
+    // and all-zero buckets — not computed yet, not a real $0 fleet.
+    const res: UatHoldingCostSummaryResponse = { error: false, data: { totalHoldingCost: null, buckets: [] } }
+    expect(mapUatHoldingCostSummary(res).totalHoldingCost).toBeNull()
+  })
+
+  it("defaults buckets to an empty array when missing", () => {
+    expect(mapUatHoldingCostSummary({ error: false, data: { totalHoldingCost: null } }).buckets).toEqual([])
+  })
+})
+
+describe("mapUatHomeStats", () => {
+  it("maps all 4 metrics straight through when present", () => {
+    const res: UatHomeStatsResponse = {
+      data: {
+        totalInventory: { value: 8897, change: 544, changePct: 6.5 },
+        totalInventoryValue: { value: 0, change: 0, changePct: null },
+        inventoryTurnoverInDays: { value: 0, change: 0, changePct: null },
+        ageingVehicles: { value: 8066, change: 24, changePct: 0.3 },
+      },
+    }
+    const result = mapUatHomeStats(res)
+    expect(result.totalInventory).toEqual({ value: 8897, change: 544, changePct: 6.5 })
+    expect(result.ageingVehicles).toEqual({ value: 8066, change: 24, changePct: 0.3 })
+  })
+
+  it("keeps a null changePct as null rather than defaulting it to 0", () => {
+    // inventoryTurnoverInDays comes back value:0/changePct:null on both UAT
+    // dealers tested — "not computed yet", not "zero days turnover".
+    const res: UatHomeStatsResponse = { data: { inventoryTurnoverInDays: { value: 0, change: 0, changePct: null } } }
+    expect(mapUatHomeStats(res).inventoryTurnoverInDays?.changePct).toBeNull()
+  })
+
+  it("maps a missing metric to null rather than throwing", () => {
+    expect(mapUatHomeStats({ data: {} }).totalInventory).toBeNull()
+    expect(mapUatHomeStats({}).totalInventory).toBeNull()
   })
 })

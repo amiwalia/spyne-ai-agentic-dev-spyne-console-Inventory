@@ -10,7 +10,6 @@ import { COLOR, GRADIENT, SHELL } from "@/lib/tokens"
 import { VehicleDetailsTab } from "./vdp/VehicleDetailsTab"
 import { MerchandiseStatusTab } from "./vdp/MerchandiseStatusTab"
 import { PublishStatusTab } from "./vdp/PublishStatusTab"
-import { PricingTab } from "./vdp/PricingTab"
 import { PhotoScoreModal } from "./PhotoScoreModal"
 
 type ActionKey = "noPhotos" | "needsPromotion" | "notLiveYet"
@@ -19,10 +18,9 @@ interface VehicleActionDrawerProps {
   vehicle: Vehicle | null
   onClose: () => void
   onResolve: (vehicleId: string, key: ActionKey) => void
-  onApplyPrice: (vehicleId: string, newPrice: number) => void
 }
 
-const TABS = ["Overview", "Vehicle Details", "Merchandise Status", "Publish Status", "Pricing"] as const
+const TABS = ["Overview", "Vehicle Details", "Merchandise Status", "Publish Status"] as const
 type Tab = (typeof TABS)[number]
 
 const CHECKLIST: { key: ActionKey; label: string; value: string }[] = [
@@ -40,10 +38,9 @@ const DETAIL_ROWS = (v: Vehicle) => [
   { label: "Trim", value: v.trim ?? "—" },
   { label: "Year", value: String(v.year) },
   { label: "Price", value: formatCurrency(v.price) },
-  { label: "Provenance", value: `${v.source.channel} · ${v.source.detail}` },
 ]
 
-export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice }: VehicleActionDrawerProps) {
+export function VehicleActionDrawer({ vehicle, onClose, onResolve }: VehicleActionDrawerProps) {
   const [tab, setTab] = useState<Tab>("Overview")
   const [photoScoreOpen, setPhotoScoreOpen] = useState(false)
   const [realPhotoScore, setRealPhotoScore] = useState<UatPhotoScore | null>(null)
@@ -233,8 +230,6 @@ export function VehicleActionDrawer({ vehicle, onClose, onResolve, onApplyPrice 
                 {tab === "Publish Status" && (
                   <PublishStatusTab vehicle={vehicle} onFixListing={() => onResolve(vehicle.id, "notLiveYet")} />
                 )}
-
-                {tab === "Pricing" && <PricingTab vehicle={vehicle} onApplyPrice={(price) => onApplyPrice(vehicle.id, price)} />}
               </div>
             </div>
           </div>

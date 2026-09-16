@@ -25,6 +25,11 @@ export interface KpiCardProps {
   trendPoints: number[]
   trendChangePct: number
   trendGood: boolean
+  /** True when the real backend hasn't computed a week-over-week change yet
+   * (e.g. holding-cost/summary's totalHoldingCost: null) — shows a neutral
+   * "Not yet available" line instead of a real-looking arrow/percentage
+   * built from data that doesn't exist. */
+  trendUnavailable?: boolean
 }
 
 const DOT_COLOR: Record<KpiLegendItem["tone"], string> = {
@@ -42,12 +47,26 @@ function InfoIcon({ size = 17 }: { size?: number }) {
   )
 }
 
-export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyph, legend, trendExtra, trendPoints, trendChangePct, trendGood }: KpiCardProps) {
+export function KpiCard({
+  titleLead,
+  titleBold,
+  tooltip,
+  value,
+  unit,
+  wash,
+  glyph,
+  legend,
+  trendExtra,
+  trendPoints,
+  trendChangePct,
+  trendGood,
+  trendUnavailable,
+}: KpiCardProps) {
   const [titleTip, setTitleTip] = useState(false)
   const [legendTip, setLegendTip] = useState<number | null>(null)
   const trendDown = trendChangePct <= 0
-  const trendColor = trendGood ? "rgb(10,124,74)" : "#e0392e"
-  const trendBg = trendGood ? "rgba(10,124,74,0.07)" : "rgba(224,57,46,0.06)"
+  const trendColor = trendUnavailable ? "rgb(150,146,168)" : trendGood ? "rgb(10,124,74)" : "#e0392e"
+  const trendBg = trendUnavailable ? "rgba(120,116,138,0.08)" : trendGood ? "rgba(10,124,74,0.07)" : "rgba(224,57,46,0.06)"
 
   return (
     <div
@@ -115,7 +134,7 @@ export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyp
         {value}
         <span style={{ fontSize: 20 }}> {unit}</span>
         <span
-          aria-label={trendDown ? "trending down" : "trending up"}
+          aria-label={trendUnavailable ? "trend not available" : trendDown ? "trending down" : "trending up"}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -130,19 +149,31 @@ export function KpiCard({ titleLead, titleBold, tooltip, value, unit, wash, glyp
             background: trendBg,
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: trendDown ? "none" : "rotate(180deg)" }}>
-            <path d="M12 4v16M12 20l-6.5-6.5M12 20l6.5-6.5" stroke={trendColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          {trendUnavailable ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M6 12h12" stroke={trendColor} strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: trendDown ? "none" : "rotate(180deg)" }}>
+              <path d="M12 4v16M12 20l-6.5-6.5M12 20l6.5-6.5" stroke={trendColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
         </span>
       </div>
 
       <div style={{ position: "relative", marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-        <Sparkline points={trendPoints} color={trendColor} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: trendColor }}>
-          {trendChangePct > 0 ? "+" : ""}
-          {trendChangePct}%
-        </span>
-        <span style={{ fontSize: 11.5, fontWeight: 500, color: COLOR.textMuted }}>vs last week</span>
+        {trendUnavailable ? (
+          <span style={{ fontSize: 12, fontWeight: 600, color: COLOR.textMuted }}>Not computed by the backend yet</span>
+        ) : (
+          <>
+            <Sparkline points={trendPoints} color={trendColor} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: trendColor }}>
+              {trendChangePct > 0 ? "+" : ""}
+              {trendChangePct}%
+            </span>
+            <span style={{ fontSize: 11.5, fontWeight: 500, color: COLOR.textMuted }}>vs last week</span>
+          </>
+        )}
         {trendExtra && <span style={{ marginLeft: "auto" }}>{trendExtra}</span>}
       </div>
 

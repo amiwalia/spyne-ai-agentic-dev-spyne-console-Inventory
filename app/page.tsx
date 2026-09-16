@@ -15,19 +15,17 @@ import { VehicleActionDrawer } from "@/components/inventory/VehicleActionDrawer"
 import { AddVehicleModal } from "@/components/inventory/AddVehicleModal"
 import { FiltersPanel, emptyAdvancedFilters, type AdvancedFilters } from "@/components/inventory/FiltersPanel"
 import { Toast } from "@/components/inventory/Toast"
-import {
-  getDaysSupplyBreakdown,
-  getHoldingCostBuckets,
-  getPricingInsight,
-  getTimeToMarketBuckets,
-  getTrendSeries,
-  isHighDemand,
-  totalDaysSupply,
-  totalHoldingCost,
-  totalTimeToMarket,
-} from "@/lib/mock-data"
+import { getPricingInsight, getTimeToMarketBuckets, getTrendSeries, isHighDemand, totalTimeToMarket } from "@/lib/mock-data"
 import type { Vehicle } from "@/lib/types"
-import type { UatFilterOptions, UatPartnerStatus, UatScoreAttributesCount, UatTimeToMarket } from "@/lib/uat-adapter"
+import type {
+  UatDaysSupplySummary,
+  UatFilterOptions,
+  UatHoldingCostSummary,
+  UatHomeStats,
+  UatPartnerStatus,
+  UatScoreAttributesCount,
+  UatTimeToMarket,
+} from "@/lib/uat-adapter"
 import { formatCurrency } from "@/lib/format"
 import { downloadCsv, vehiclesToCsv } from "@/lib/csv"
 
@@ -42,6 +40,9 @@ export default function InventoryPage() {
   const [realTtm, setRealTtm] = useState<UatTimeToMarket | undefined>(undefined)
   const [realScoreAttrs, setRealScoreAttrs] = useState<UatScoreAttributesCount | undefined>(undefined)
   const [realPartnerStatus, setRealPartnerStatus] = useState<UatPartnerStatus[] | undefined>(undefined)
+  const [realHoldingCostSummary, setRealHoldingCostSummary] = useState<UatHoldingCostSummary | undefined>(undefined)
+  const [realHomeStats, setRealHomeStats] = useState<UatHomeStats | undefined>(undefined)
+  const [realDaysSupplySummary, setRealDaysSupplySummary] = useState<UatDaysSupplySummary | undefined>(undefined)
   const [tab, setTab] = useState<TabValue>("all")
   const [search, setSearch] = useState("")
   const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set())
@@ -187,6 +188,83 @@ export default function InventoryPage() {
     }
   }, [])
 
+  // Fleet-wide holding-cost total from the backend — deliberately not in the
+  // `filtered` dependency chain, since this KPI is meant to stay fixed
+  // regardless of what's selected in the table (unlike the vehicle-derived
+  // fallback below, which only sees whatever's in the fetched sample).
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/inventory/holding-cost-summary")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as UatHoldingCostSummary
+      })
+      .then((summary) => {
+        if (!cancelled) setRealHoldingCostSummary(summary)
+      })
+      .catch(() => {
+        // Non-fatal — the Holding Cost KPI card falls back to summing the
+        // fetched vehicle sample when this is undefined.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Real week-over-week deltas, home/stats. Only inventoryTurnoverInDays
+  // corresponds to anything on screen today (the Days Supply card's trend
+  // %) — totalInventory/totalInventoryValue/ageingVehicles are real numbers
+  // with no matching card yet, so they're fetched but not displayed.
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/inventory/home-stats")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as UatHomeStats
+      })
+      .then((stats) => {
+        if (!cancelled) setRealHomeStats(stats)
+      })
+      .catch(() => {
+        // Non-fatal — the Days Supply card's trend % falls back to the
+        // synthetic client-computed one when this is undefined.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Fleet-wide Days Supply headline + on-target/overstocked type counts,
+  // from the same days-supply/segments endpoint the /segments page already
+  // uses for its per-segment rows. avgDaysSupply comes back real but
+  // implausibly large on every dealer tested (85,618 / 1,031,603 "days") —
+  // the same backend data-quality issue as the per-segment values — shown
+  // as-is, same as the holding-cost card shows its own real empty state
+  // rather than a nicer client-computed number that isn't what the backend
+  // actually has.
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/inventory/days-supply-segments")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as { summary: UatDaysSupplySummary }
+      })
+      .then((body) => {
+        if (!cancelled) setRealDaysSupplySummary(body.summary)
+      })
+      .catch(() => {
+        // Non-fatal — the Days Supply card shows its loading/empty "—"
+        // state when this is undefined, same as it does while real data is
+        // simply still in flight.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Loads the rooftop's real persisted holding-cost rate once on mount,
   // overwriting the 50 default above. Deliberately a one-shot fetch, not a
   // dependency of anything else — updating holdingCostPerDay afterward (via
@@ -314,22 +392,36 @@ export default function InventoryPage() {
     return sorted.slice(start, start + PAGE_SIZE)
   }, [sorted, page])
 
-  const daysSupplyBreakdown = useMemo(() => getDaysSupplyBreakdown(vehicles), [vehicles])
   // Real when available (see the time-to-market fetch below) — falls back to
   // bucketing the fetched vehicles' current ageDays, which measures a
   // different thing (a snapshot of today's inventory, not the average delay
   // for units that actually went live in the last 30 days).
   const timeToMarketBuckets = useMemo(() => realTtm?.buckets ?? getTimeToMarketBuckets(vehicles), [vehicles, realTtm])
   const timeToMarketValue = realTtm?.averageDays ?? totalTimeToMarket(vehicles)
-  const holdingCostBuckets = useMemo(() => getHoldingCostBuckets(vehicles), [vehicles])
-  const onTargetTypes = daysSupplyBreakdown.find((b) => b.status === "on_target")
-  const overstockedTypes = daysSupplyBreakdown.find((b) => b.status === "overstocked")
+  // Trusts /inventory/v2/holding-cost/summary as-is, including its empty
+  // state — every UAT dealer tested comes back with totalHoldingCost: null
+  // and all-zero buckets ("not computed yet" on the backend), and the card
+  // shows that real state directly rather than masking it with a
+  // client-computed number that isn't what the backend actually has.
+  const holdingCostValue = realHoldingCostSummary?.totalHoldingCost ?? null
+  const holdingCostBuckets = realHoldingCostSummary?.buckets ?? []
+  // Trusts days-supply/segments' fleet-wide aggregate as-is too — real but
+  // implausibly large on every dealer tested (a backend bug, not a UI one),
+  // shown directly rather than swapped for a nicer client-computed number.
+  const daysSupplyValue = realDaysSupplySummary?.avgDaysSupply ?? null
 
   // No real trend/history endpoint yet — this sparkline stays synthetic,
   // just seeded from the real current average when we have one.
   const timeToMarketTrend = useMemo(() => getTrendSeries(timeToMarketValue, "down"), [timeToMarketValue])
-  const holdingCostTrend = useMemo(() => getTrendSeries(totalHoldingCost(vehicles), "down"), [vehicles])
-  const daysSupplyTrend = useMemo(() => getTrendSeries(totalDaysSupply(vehicles), "down"), [vehicles])
+  const holdingCostTrend = useMemo(() => getTrendSeries(holdingCostValue ?? 0, "down"), [holdingCostValue])
+  // Sparkline shape stays synthetic (no real time-series endpoint) but the
+  // week-over-week % swaps to the real value from home/stats when the
+  // backend has actually computed one — both UAT dealers tested come back
+  // with inventoryTurnoverInDays at changePct: null, so this still shows
+  // the synthetic % today, but will pick up the real one the moment it's
+  // populated, with no further code change.
+  const daysSupplyTrend = useMemo(() => getTrendSeries(daysSupplyValue ?? 0, "down"), [daysSupplyValue])
+  const daysSupplyChangePct = realHomeStats?.inventoryTurnoverInDays?.changePct ?? daysSupplyTrend.changePct
 
   const advancedFilterCount =
     (advancedFilters.minPrice || advancedFilters.maxPrice ? 1 : 0) +
@@ -364,13 +456,6 @@ export default function InventoryPage() {
     setVehicles((prev) => prev.map((v) => (v.id === vehicleId ? { ...v, needsAction: { ...v.needsAction, [key]: false } } : v)))
     const labels: Record<typeof key, string> = { noPhotos: "Photos generated", needsPromotion: "Listing boosted", notLiveYet: "Listing published" }
     flashToast(labels[key])
-  }
-
-  const handleApplyPrice = (vehicleId: string, newPrice: number) => {
-    setVehicles((prev) =>
-      prev.map((v) => (v.id === vehicleId ? { ...v, price: newPrice, daysSupplyStatus: v.daysSupplyStatus === "overstocked" ? ("on_target" as const) : v.daysSupplyStatus } : v))
-    )
-    flashToast(`Price updated to ${formatCurrency(newPrice)}`)
   }
 
   const handleAddVehicle = (vehicle: Vehicle) => {
@@ -438,7 +523,7 @@ export default function InventoryPage() {
               titleLead="Holding"
               titleBold="Cost"
               tooltip="What the unsold inventory is costing to hold, and how that risk is spread."
-              value={formatCurrency(totalHoldingCost(vehicles)).replace("$", "$ ")}
+              value={holdingCostValue != null ? formatCurrency(holdingCostValue).replace("$", "$ ") : "—"}
               unit=""
               wash="wash-holding-blue.svg"
               glyph="glyph-holding-blue.svg"
@@ -450,13 +535,14 @@ export default function InventoryPage() {
               trendPoints={holdingCostTrend.points}
               trendChangePct={holdingCostTrend.changePct}
               trendGood={holdingCostTrend.changePct <= 0}
+              trendUnavailable={holdingCostValue == null}
             />
 
             <KpiCard
               titleLead="Days"
               titleBold="Supply"
               tooltip="Units on hand ÷ the daily retail rate over the trailing 90 days. Age tells you to reprice a unit; this tells you to stop buying the type."
-              value={String(totalDaysSupply(vehicles))}
+              value={daysSupplyValue != null ? daysSupplyValue.toLocaleString("en-US") : "—"}
               unit="Days"
               wash="wash-health.svg"
               glyph="glyph-health.png"
@@ -464,21 +550,18 @@ export default function InventoryPage() {
                 {
                   tone: "success",
                   label: "On target",
-                  count: `${onTargetTypes?.typeCount ?? 0} types`,
-                  tooltipTitle: "On target",
-                  tooltipDetail: onTargetTypes?.bodyTypes.map((t) => `${t.name} ${t.days}d`).join(" · "),
+                  count: `${realDaysSupplySummary?.onTargetTypes ?? 0} types`,
                 },
                 {
                   tone: "danger",
                   label: "Overstocked",
-                  count: `${overstockedTypes?.typeCount ?? 0} type${(overstockedTypes?.typeCount ?? 0) === 1 ? "" : "s"}`,
-                  tooltipTitle: "Overstocked",
-                  tooltipDetail: overstockedTypes?.bodyTypes.map((t) => `${t.name} ${t.days}d`).join(" · "),
+                  count: `${realDaysSupplySummary?.overstockedTypes ?? 0} type${(realDaysSupplySummary?.overstockedTypes ?? 0) === 1 ? "" : "s"}`,
                 },
               ]}
               trendPoints={daysSupplyTrend.points}
-              trendChangePct={daysSupplyTrend.changePct}
-              trendGood={daysSupplyTrend.changePct <= 0}
+              trendChangePct={daysSupplyChangePct}
+              trendGood={daysSupplyChangePct <= 0}
+              trendUnavailable={daysSupplyValue == null}
               trendExtra={<DaysSupplySegmentLink />}
             />
           </div>
@@ -527,12 +610,6 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {loadState.status === "ready" && loadState.meta?.truncated && (
-            <div style={{ marginTop: 16, padding: "10px 16px", borderRadius: 10, background: "rgb(255,244,229)", color: "rgb(178,94,0)", fontSize: 12.5, fontWeight: 600 }}>
-              Showing the {loadState.meta.fetchedCount} most recently created active vehicles — this rooftop has more than that, and there&apos;s no real server-side pagination wired up yet.
-            </div>
-          )}
-
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
             {loadState.status === "loading" && vehicles.length === 0 ? (
               <div style={{ padding: "60px 0", textAlign: "center", color: "rgb(111,106,128)", fontSize: 14, fontWeight: 500 }}>
@@ -566,12 +643,7 @@ export default function InventoryPage() {
         }}
       />
 
-      <VehicleActionDrawer
-        vehicle={actionVehicle}
-        onClose={() => setActionVehicleId(null)}
-        onResolve={handleResolveAction}
-        onApplyPrice={handleApplyPrice}
-      />
+      <VehicleActionDrawer vehicle={actionVehicle} onClose={() => setActionVehicleId(null)} onResolve={handleResolveAction} />
 
       <AddVehicleModal open={addVehicleOpen} onClose={() => setAddVehicleOpen(false)} onAdd={handleAddVehicle} />
 

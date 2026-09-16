@@ -9,7 +9,27 @@ export const SUPPLY_STATUS_META: Record<DaysSupplyStatus, { label: string; bg: s
   on_target: { label: "On Target", bg: "rgb(231,247,239)", text: "rgb(10,124,74)", icon: CheckCircle2 },
 }
 
-export function SupplyStatusBadge({ status }: { status: DaysSupplyStatus }) {
+export function SupplyStatusBadge({ status }: { status: DaysSupplyStatus | null }) {
+  if (status === null) {
+    return (
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          padding: "3px 9px",
+          borderRadius: 999,
+          background: "rgb(241,241,245)",
+          color: "rgb(120,116,138)",
+          fontSize: 11,
+          fontWeight: 700,
+          whiteSpace: "nowrap",
+        }}
+      >
+        Not yet scored
+      </span>
+    )
+  }
+
   const meta = SUPPLY_STATUS_META[status]
   return (
     <span

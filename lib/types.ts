@@ -56,8 +56,11 @@ export interface DaysSupplyBreakdownEntry {
 export interface SegmentDaysSupply {
   bodyType: string
   vehicleCount: number
-  avgDaysSupply: number
-  status: DaysSupplyStatus
+  // Nullable because the real days-supply/segments backend hasn't computed
+  // a value for every segment yet — not every segment has enough sales
+  // history to derive a days-supply figure from.
+  avgDaysSupply: number | null
+  status: DaysSupplyStatus | null
 }
 
 export interface TimeToMarketBucket {

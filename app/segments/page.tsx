@@ -7,12 +7,17 @@ import { Sidebar } from "@/components/inventory/Sidebar"
 import { Topbar } from "@/components/inventory/Topbar"
 import { SegmentAccordion } from "@/components/inventory/SegmentAccordion"
 import { getSegmentBreakdown } from "@/lib/mock-data"
-import type { Vehicle } from "@/lib/types"
+import type { SegmentDaysSupply, Vehicle } from "@/lib/types"
 import { COLOR } from "@/lib/tokens"
 
 export default function SegmentsPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loadState, setLoadState] = useState<{ status: "loading" | "ready" | "error"; error?: string }>({ status: "loading" })
+  // Real, whole-account segment breakdown from /inventory/v2/days-supply/segments
+  // when available — falls back to computing it from just the fetched
+  // vehicles (a capped, possibly-incomplete sample) when the real fetch
+  // hasn't resolved yet.
+  const [realSegments, setRealSegments] = useState<SegmentDaysSupply[] | undefined>(undefined)
 
   useEffect(() => {
     let cancelled = false
@@ -36,7 +41,30 @@ export default function SegmentsPage() {
     }
   }, [])
 
-  const segments = getSegmentBreakdown(vehicles)
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/inventory/days-supply-segments")
+      .then(async (res) => {
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`)
+        return body as { segments: SegmentDaysSupply[] }
+      })
+      .then((body) => {
+        if (!cancelled) setRealSegments(body.segments)
+      })
+      .catch(() => {
+        // Non-fatal — falls back to the client-computed breakdown below.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const segments = realSegments ?? getSegmentBreakdown(vehicles)
+  // The real segment breakdown covers the whole account, not just the
+  // capped sample of vehicles this page fetches for the inline preview —
+  // so the fleet-wide total comes from summing it, not from vehicles.length.
+  const totalVehicleCount = realSegments ? realSegments.reduce((sum, s) => sum + s.vehicleCount, 0) : vehicles.length
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "rgb(251,251,254)" }}>
@@ -52,7 +80,7 @@ export default function SegmentsPage() {
           <div style={{ fontSize: 22, fontWeight: 700, color: "rgb(8,8,8)" }}>Days Supply by Segment</div>
           <p style={{ fontSize: 14, color: "rgb(111,106,128)", marginTop: 2 }}>
             {loadState.status === "ready"
-              ? `${segments.length} body-type segments across ${vehicles.length} vehicles — click a segment to see its highest-priority vehicles`
+              ? `${segments.length} body-type segments across ${totalVehicleCount.toLocaleString("en-US")} vehicles — click a segment to see its highest-priority vehicles`
               : "Loading segments from live inventory…"}
           </p>
 

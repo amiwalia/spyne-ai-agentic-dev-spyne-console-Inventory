@@ -1,4 +1,4 @@
-import type { TimeToMarketBucket, Vehicle } from "./types"
+import type { DaysSupplyStatus, HoldingCostBucket, SegmentDaysSupply, TimeToMarketBucket, Vehicle } from "./types"
 
 /** Shape of one `document` inside `/inventory/v2/list`'s `vinResp[]`, limited
  * to the fields this adapter actually reads. The real payload has many more. */
@@ -411,4 +411,148 @@ export interface UatCentralConfigResponse {
 export function mapUatHoldingCost(res: UatCentralConfigResponse): number | null {
   const value = res.data?.entityconfig?.holdingCost
   return typeof value === "number" ? value : null
+}
+
+export interface UatDaysSupplySegmentsResponse {
+  error: boolean
+  message?: string
+  data?: {
+    avgDaysSupply?: number | null
+    onTargetTypes?: number
+    overstockedTypes?: number
+    understockedTypes?: number
+    segments?: {
+      bodyType: string
+      vehicleCount: number
+      avgDaysSupply: number | null
+      status: string | null
+    }[]
+  }
+}
+
+const KNOWN_DAYS_SUPPLY_STATUSES: DaysSupplyStatus[] = ["on_target", "overstocked", "understocked"]
+
+/**
+ * Maps `/inventory/v2/days-supply/segments` onto the same SegmentDaysSupply
+ * shape the /segments page's own client-computed getSegmentBreakdown()
+ * already produces — a straight swap-in. avgDaysSupply/status come back
+ * null for most segments on both UAT dealers tested (not enough sales
+ * history yet), and the few non-null avgDaysSupply values seen are
+ * implausibly large (six-plus figures) — passed through as-is rather than
+ * silently clamped, since inventing a "corrected" number would be worse
+ * than showing the real, if odd, backend value. bodyType is used verbatim,
+ * unconsolidated — matches how the rest of this app already treats the raw
+ * per-vehicle bodyType field (no casing/label normalization).
+ */
+export function mapUatDaysSupplySegments(res: UatDaysSupplySegmentsResponse): SegmentDaysSupply[] {
+  const segments = res.data?.segments ?? []
+  return segments.map((s) => ({
+    // Same "Unspecified" fallback mapUatDocumentToVehicle already applies to
+    // a blank car_type/styles — this endpoint has its own blank-bodyType
+    // bucket (a real, often large segment) that isn't run through that
+    // per-vehicle mapper, so it needs the same treatment here.
+    bodyType: s.bodyType.trim() || "Unspecified",
+    vehicleCount: s.vehicleCount,
+    avgDaysSupply: s.avgDaysSupply,
+    status: KNOWN_DAYS_SUPPLY_STATUSES.includes(s.status as DaysSupplyStatus) ? (s.status as DaysSupplyStatus) : null,
+  }))
+}
+
+export interface UatDaysSupplySummary {
+  avgDaysSupply: number | null
+  onTargetTypes: number
+  overstockedTypes: number
+  understockedTypes: number
+}
+
+/**
+ * Maps the same `/inventory/v2/days-supply/segments` response's fleet-wide
+ * aggregate fields — the Days Supply KPI card's real counterpart to its
+ * client-computed headline value and on-target/overstocked legend counts.
+ * avgDaysSupply is non-null but implausibly large on every dealer tested
+ * (85,618 / 1,031,603 days) — the same backend data-quality issue already
+ * seen in the per-segment values — passed through as-is rather than
+ * clamped or hidden. Unlike totalHoldingCost, there's no null signal here
+ * to fall back around, so the KPI card shows this number directly.
+ */
+export function mapUatDaysSupplySummary(res: UatDaysSupplySegmentsResponse): UatDaysSupplySummary {
+  return {
+    avgDaysSupply: res.data?.avgDaysSupply ?? null,
+    onTargetTypes: res.data?.onTargetTypes ?? 0,
+    overstockedTypes: res.data?.overstockedTypes ?? 0,
+    understockedTypes: res.data?.understockedTypes ?? 0,
+  }
+}
+
+export interface UatHoldingCostSummaryResponse {
+  error: boolean
+  message?: string
+  data?: {
+    totalHoldingCost: number | null
+    buckets?: HoldingCostBucket[]
+  }
+}
+
+export interface UatHoldingCostSummary {
+  totalHoldingCost: number | null
+  buckets: HoldingCostBucket[]
+}
+
+/**
+ * Maps `/inventory/v2/holding-cost/summary` — the fleet-wide total,
+ * unaffected by whatever's currently filtered in the table. totalHoldingCost
+ * comes back null (not 0) on both UAT dealers tested, meaning "not computed
+ * yet" rather than "zero holding cost"; the route/caller falls back to the
+ * client-computed total in that case rather than showing a real $0.
+ */
+export function mapUatHoldingCostSummary(res: UatHoldingCostSummaryResponse): UatHoldingCostSummary {
+  return {
+    totalHoldingCost: res.data?.totalHoldingCost ?? null,
+    buckets: res.data?.buckets ?? [],
+  }
+}
+
+interface UatHomeStatsMetric {
+  value: number
+  change: number
+  changePct: number | null
+}
+
+export interface UatHomeStatsResponse {
+  error?: boolean
+  message?: string
+  data?: {
+    totalInventory?: UatHomeStatsMetric
+    totalInventoryValue?: UatHomeStatsMetric
+    inventoryTurnoverInDays?: UatHomeStatsMetric
+    ageingVehicles?: UatHomeStatsMetric
+  }
+}
+
+export interface UatHomeStats {
+  totalInventory: UatHomeStatsMetric | null
+  totalInventoryValue: UatHomeStatsMetric | null
+  inventoryTurnoverInDays: UatHomeStatsMetric | null
+  ageingVehicles: UatHomeStatsMetric | null
+}
+
+/**
+ * Maps `/inventory/v2/home/stats` — real week-over-week deltas for 4
+ * account-wide metrics. Only inventoryTurnoverInDays has an existing home in
+ * this app (the Days Supply KPI card's trend, which the app-level fallback
+ * logic swaps in only when changePct isn't null — both UAT dealers tested
+ * come back with turnover at value:0/changePct:null, i.e. not computed yet,
+ * so the synthetic trend keeps showing today). totalInventory,
+ * totalInventoryValue, and ageingVehicles are real but don't correspond to
+ * any current card (totalInventoryValue is total asset value, not holding
+ * cost — a different metric, not a substitute for the Holding Cost card) —
+ * mapped here so they're available, not wired into any UI yet.
+ */
+export function mapUatHomeStats(res: UatHomeStatsResponse): UatHomeStats {
+  return {
+    totalInventory: res.data?.totalInventory ?? null,
+    totalInventoryValue: res.data?.totalInventoryValue ?? null,
+    inventoryTurnoverInDays: res.data?.inventoryTurnoverInDays ?? null,
+    ageingVehicles: res.data?.ageingVehicles ?? null,
+  }
 }
